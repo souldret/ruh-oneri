@@ -1,0 +1,95 @@
+<?php
+/**
+ * Herkese açık seri öneri listesi — pill nav filtreli.
+ *
+ * @package MangaRuhu\RequestSystem
+ * @var array $atts Shortcode nitelikleri.
+ */
+
+declare(strict_types=1);
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+?>
+<div class="mrrs-board" id="mrrs-board" data-mrrs-board>
+
+	<div class="mrrs-board__header">
+		<div class="mrrs-board__header-top">
+			<div>
+				<h2 class="mrrs-board__title"><?php esc_html_e( 'Seri Önerileri', 'manga-ruhu-request-system' ); ?></h2>
+				<p class="mrrs-board__subtitle"><?php esc_html_e( 'Önerileri destekleyin veya yeni bir öneri gönderin.', 'manga-ruhu-request-system' ); ?></p>
+			</div>
+			<span class="mrrs-total-badge" data-mrrs-total hidden></span>
+		</div>
+	</div>
+
+	<div class="mrrs-board__toolbar">
+		<input
+			type="search"
+			class="mrrs-search-input"
+			data-mrrs-search
+			placeholder="<?php esc_attr_e( 'Seri ara…', 'manga-ruhu-request-system' ); ?>"
+			autocomplete="off"
+		>
+	</div>
+
+	<!-- Sıralama pill'leri -->
+	<div class="mrrs-pill-group mrrs-pill-group--sort" role="group" aria-label="<?php esc_attr_e( 'Sıralama', 'manga-ruhu-request-system' ); ?>">
+		<button type="button" class="mrrs-pill is-active" data-mrrs-sort-pill="most_votes">
+			<?php esc_html_e( 'En Çok Oy', 'manga-ruhu-request-system' ); ?>
+		</button>
+		<button type="button" class="mrrs-pill" data-mrrs-sort-pill="newest">
+			<?php esc_html_e( 'En Yeni', 'manga-ruhu-request-system' ); ?>
+		</button>
+		<button type="button" class="mrrs-pill" data-mrrs-sort-pill="oldest">
+			<?php esc_html_e( 'En Eski', 'manga-ruhu-request-system' ); ?>
+		</button>
+	</div>
+
+	<!-- Durum filtre pill'leri -->
+	<div class="mrrs-pill-group mrrs-pill-group--status" role="group" aria-label="<?php esc_attr_e( 'Durum Filtresi', 'manga-ruhu-request-system' ); ?>">
+		<button type="button" class="mrrs-pill is-active" data-mrrs-status-pill="all">
+			<?php esc_html_e( 'Tümü', 'manga-ruhu-request-system' ); ?>
+		</button>
+		<button type="button" class="mrrs-pill" data-mrrs-status-pill="pending">
+			<?php esc_html_e( 'Beklemede', 'manga-ruhu-request-system' ); ?>
+		</button>
+		<button type="button" class="mrrs-pill" data-mrrs-status-pill="reviewing">
+			<?php esc_html_e( 'İnceleniyor', 'manga-ruhu-request-system' ); ?>
+		</button>
+		<button type="button" class="mrrs-pill" data-mrrs-status-pill="approved">
+			<?php esc_html_e( 'Onaylandı', 'manga-ruhu-request-system' ); ?>
+		</button>
+		<button type="button" class="mrrs-pill" data-mrrs-status-pill="rejected">
+			<?php esc_html_e( 'Reddedildi', 'manga-ruhu-request-system' ); ?>
+		</button>
+		<button type="button" class="mrrs-pill" data-mrrs-status-pill="translating">
+			<?php esc_html_e( 'Çeviriye Alındı', 'manga-ruhu-request-system' ); ?>
+		</button>
+	</div>
+
+	<div class="mrrs-board__list" data-mrrs-list role="list"></div>
+
+	<div class="mrrs-board__empty" data-mrrs-empty hidden>
+		<p><?php esc_html_e( 'Sonuç bulunamadı.', 'manga-ruhu-request-system' ); ?></p>
+	</div>
+
+	<div class="mrrs-board__loader" data-mrrs-loader hidden>
+		<div class="mrrs-skeleton-list" aria-hidden="true">
+			<div class="mrrs-skeleton-card"></div>
+			<div class="mrrs-skeleton-card"></div>
+			<div class="mrrs-skeleton-card"></div>
+			<div class="mrrs-skeleton-card"></div>
+			<div class="mrrs-skeleton-card"></div>
+		</div>
+	</div>
+
+	<!-- Pagination bölümü -->
+	<div class="mrrs-pagination-wrap" data-mrrs-pagination hidden>
+		<p class="mrrs-page-info" data-mrrs-page-info></p>
+		<nav class="mrrs-pagination" aria-label="<?php esc_attr_e( 'Sayfa navigasyonu', 'manga-ruhu-request-system' ); ?>" data-mrrs-pager>
+		</nav>
+	</div>
+
+</div>

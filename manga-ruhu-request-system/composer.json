@@ -1,0 +1,35 @@
+{
+	"name": "mangaruhu/request-system",
+	"description": "Professional manga request management system for WordPress.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"authors": [
+		{
+			"name": "MangaRuhu",
+			"homepage": "https://mangaruhu.com"
+		}
+	],
+	"require": {
+		"php": ">=8.2"
+	},
+	"autoload": {
+		"psr-4": {
+			"MangaRuhu\\RequestSystem\\": "",
+			"MangaRuhu\\RequestSystem\\Admin\\": "admin/",
+			"MangaRuhu\\RequestSystem\\PublicFront\\": "public/",
+			"MangaRuhu\\RequestSystem\\Api\\": "api/",
+			"MangaRuhu\\RequestSystem\\Database\\": "database/",
+			"MangaRuhu\\RequestSystem\\Providers\\": "providers/",
+			"MangaRuhu\\RequestSystem\\UI\\": "includes/UI/",
+			"MangaRuhu\\RequestSystem\\Services\\": "includes/Services/",
+			"MangaRuhu\\RequestSystem\\Assets\\": "includes/Assets/",
+			"MangaRuhu\\RequestSystem\\Includes\\": "includes/"
+		}
+	},
+	"config": {
+		"optimize-autoloader": true,
+		"sort-packages": true
+	},
+	"minimum-stability": "stable",
+	"prefer-stable": true
+}
