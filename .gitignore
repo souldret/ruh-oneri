@@ -18,5 +18,8 @@ desktop.ini
 wp-config.php
 wp-content/uploads/
 
+# Zip / dağıtım paketleri
+*.zip
+
 # Logs
 *.log
