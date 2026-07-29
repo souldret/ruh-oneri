@@ -73,6 +73,10 @@ function buildCard(item,q,uvt){
     var d=item.description.length>120?item.description.substring(0,120)+'\u2026':item.description;
     dh='<p class="mrrs-card__desc">'+highlight(d,q)+'</p>';
   }
+  var nh='';
+  if(item.status==='rejected'&&item.admin_note){
+    nh='<div class="mrrs-card__admin-note"><span class="mrrs-card__admin-note-label">❉ Red sebebi:</span>'+escHtml(item.admin_note)+'</div>';
+  }
   var sp=item.source_link?'<a class="mrrs-card__source-link" href="'+escHtml(item.source_link)+'" target="_blank" rel="noopener noreferrer">Kaynak \u2197</a>':'';
   var sub=item.submitter_name?escHtml(item.submitter_name):'Misafir';
   return'<div class="mrrs-card" role="listitem" data-id="'+item.id+'">'
@@ -83,6 +87,8 @@ function buildCard(item,q,uvt){
     +'<div class="mrrs-card__body">'
     +'<div class="mrrs-card__title-row"><p class="mrrs-card__title">'+th+'</p>'+badge+'</div>'
     +dh
+    +nh
+    +nh
     +'<div class="mrrs-card__meta">'
     +'<span class="mrrs-card__date">'+escHtml(formatDate(item.created_at))+'</span>'
     +sp
