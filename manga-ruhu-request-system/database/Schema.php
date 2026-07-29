@@ -29,6 +29,7 @@ final class Schema {
 				title varchar(255) NOT NULL DEFAULT '',
 				source_link varchar(500) NOT NULL DEFAULT '',
 				description text NULL,
+				admin_note text NULL,
 				status varchar(20) NOT NULL DEFAULT 'pending',
 				up_votes int(11) unsigned NOT NULL DEFAULT 0,
 				down_votes int(11) unsigned NOT NULL DEFAULT 0,
@@ -39,7 +40,10 @@ final class Schema {
 				KEY status (status),
 				KEY up_votes (up_votes),
 				KEY created_at (created_at),
-				KEY title (title(191))
+				KEY title (title(191)),
+				KEY mrrs_status_votes (status, up_votes),
+				KEY mrrs_created_at (created_at),
+				KEY mrrs_status_created (status, created_at)
 			) {$charset_collate};",
 
 			self::TABLE_VOTES => "CREATE TABLE {$votes} (

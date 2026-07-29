@@ -156,7 +156,12 @@ final class RequestController {
 			'per_page' => $per_page,
 		) );
 
-		return new WP_REST_Response( array(
+		// Performans: kullanıcı verilerini toplu cache'e al (N+1 sorgusu önler)
+		if ( ! empty( $result['items'] ) ) {
+			$this->requests->prime_user_cache( $result['items'] );
+		}
+
+		$response = new WP_REST_Response( array(
 			'items'       => array_map( fn( object $row ): array => $this->requests->to_array( $row ), $result['items'] ),
 			'total'       => $result['total'],
 			'page'        => $result['page'],
@@ -166,6 +171,15 @@ final class RequestController {
 			'from'        => $result['total'] > 0 ? ( ( $result['page'] - 1 ) * $result['per_page'] + 1 ) : 0,
 			'to'          => min( $result['page'] * $result['per_page'], $result['total'] ),
 		), 200 );
+
+		// Performans: tarayıcı/CDN cache — sadece GET, misafir için 60sn
+		if ( ! is_user_logged_in() ) {
+			$response->header( 'Cache-Control', 'public, max-age=60, stale-while-revalidate=120' );
+		} else {
+			$response->header( 'Cache-Control', 'no-store' );
+		}
+
+		return $response;
 	}
 
 	/**

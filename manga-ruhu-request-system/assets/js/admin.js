@@ -200,10 +200,10 @@
 		}
 
 		if (target.classList.contains('mrrs-quick-reject')) {
-			ajax('mrrs_admin_bulk_status', { ids: [target.dataset.id], status: 'rejected' }).then(res => {
-				showNotice(res.data?.message || 'Reddedildi.', res.success ? 'success' : 'error');
-				loadList();
-			});
+			// Red isleminde modal ac - admin notu girilebilsin
+			openModal(parseInt(target.dataset.id, 10));
+			const statusEl = document.getElementById('mrrs-edit-status');
+			if (statusEl) { statusEl.value = 'rejected'; toggleAdminNoteRow('rejected'); }
 		}
 
 		if (target.classList.contains('mrrs-delete-btn')) {
@@ -229,9 +229,20 @@
 			document.getElementById('mrrs-edit-source').value = item.source_link || '';
 			document.getElementById('mrrs-edit-desc').value   = item.description || '';
 			document.getElementById('mrrs-edit-status').value = item.status || 'pending';
+			const noteEl = document.getElementById('mrrs-edit-admin-note');
+			if (noteEl) noteEl.value = item.admin_note || '';
+			toggleAdminNoteRow(item.status);
 			modal.style.display = 'flex';
 		});
 	}
+
+	/* ── Admin notu satırını duruma göre göster/gizle ── */
+	function toggleAdminNoteRow(status) {
+		const row = document.getElementById('mrrs-admin-note-row');
+		if (row) row.style.display = status === 'rejected' ? '' : 'none';
+	}
+	const editStatus = document.getElementById('mrrs-edit-status');
+	editStatus && editStatus.addEventListener('change', () => toggleAdminNoteRow(editStatus.value));
 
 	modalClose && modalClose.addEventListener('click', () => { modal.style.display = 'none'; });
 	modal && modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
@@ -244,6 +255,7 @@
 			source_link: document.getElementById('mrrs-edit-source').value,
 			description: document.getElementById('mrrs-edit-desc').value,
 			status:      document.getElementById('mrrs-edit-status').value,
+			admin_note:  (document.getElementById('mrrs-edit-admin-note') || {}).value || '',
 		}).then(res => {
 			modal.style.display = 'none';
 			showNotice(res.data?.message || (res.success ? 'Kaydedildi.' : 'Hata.'), res.success ? 'success' : 'error');

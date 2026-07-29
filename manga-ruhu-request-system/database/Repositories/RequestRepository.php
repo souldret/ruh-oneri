@@ -145,7 +145,7 @@ final class RequestRepository {
 			return false;
 		}
 
-		$allowed = array( 'title', 'source_link', 'description', 'status', 'up_votes', 'down_votes' );
+		$allowed = array( 'title', 'source_link', 'description', 'admin_note', 'status', 'up_votes', 'down_votes' );
 		$row     = array();
 		$formats = array();
 
@@ -287,5 +287,32 @@ final class RequestRepository {
 			'oldest' => 'created_at ASC, id ASC',
 			default  => 'up_votes DESC, id DESC', // most_votes
 		};
+	}
+
+	/**
+	 * Sorgu sonucundaki user ID'leri toplu cache'e yukler (N+1 DB sorgusu onler).
+	 *
+	 * @param object[] $items
+	 */
+	public function prime_user_cache( array $items ): void {
+		$ids = array();
+		foreach ( $items as $item ) {
+			$uid = (int) ( $item->requested_by ?? 0 );
+			if ( $uid > 0 ) {
+				$ids[] = $uid;
+			}
+		}
+		$ids = array_unique( $ids );
+		if ( empty( $ids ) ) {
+			return;
+		}
+		// cache_users() WP 6.0+ icin toplu user cache
+		if ( function_exists( 'cache_users' ) ) {
+			cache_users( $ids );
+		} else {
+			foreach ( $ids as $uid ) {
+				get_userdata( (int) $uid );
+			}
+		}
 	}
 }

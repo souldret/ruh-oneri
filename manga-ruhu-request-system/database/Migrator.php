@@ -103,6 +103,32 @@ final class Migrator {
 				$wpdb->query( "ALTER TABLE {$votes} ADD COLUMN updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at" );
 			}
 		}
+
+		// v2.8.0: admin_note kolonu + performans indexleri.
+		if ( version_compare( $from_version, '2.8.0', '<' ) ) {
+			$has_note = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+				$wpdb->prepare(
+					'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s',
+					$requests,
+					'admin_note'
+				)
+			);
+			if ( ! $has_note ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$requests} ADD COLUMN admin_note TEXT DEFAULT NULL AFTER description" );
+			}
+
+			// Composite index'ler.
+			$indexes = $wpdb->get_col( "SHOW INDEX FROM {$requests}", 2 ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( ! in_array( 'mrrs_status_votes', $indexes, true ) ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$requests} ADD INDEX `mrrs_status_votes` (status, up_votes)" );
+			}
+			if ( ! in_array( 'mrrs_status_created', $indexes, true ) ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$requests} ADD INDEX `mrrs_status_created` (status, created_at)" );
+			}
+		}
 	}
 
 	private function drop_legacy_tables(): void {

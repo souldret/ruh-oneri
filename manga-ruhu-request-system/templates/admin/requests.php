@@ -88,18 +88,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<td><textarea id="mrrs-edit-desc" rows="4" class="large-text"></textarea></td>
 				</tr>
 				<tr>
-					<th><label for="mrrs-edit-status"><?php esc_html_e( 'Durum', 'manga-ruhu-request-system' ); ?></label></th>
-					<td>
-						<select id="mrrs-edit-status">
-							<option value="pending"><?php esc_html_e( 'Beklemede', 'manga-ruhu-request-system' ); ?></option>
-							<option value="reviewing"><?php esc_html_e( 'İnceleniyor', 'manga-ruhu-request-system' ); ?></option>
-							<option value="approved"><?php esc_html_e( 'Onaylandı', 'manga-ruhu-request-system' ); ?></option>
-							<option value="rejected"><?php esc_html_e( 'Reddedildi', 'manga-ruhu-request-system' ); ?></option>
-							<option value="translating"><?php esc_html_e( 'Çeviriye Alındı', 'manga-ruhu-request-system' ); ?></option>
-						</select>
-					</td>
-				</tr>
-			</table>
+				<th><label for="mrrs-edit-status"><?php esc_html_e( 'Durum', 'manga-ruhu-request-system' ); ?></label></th>
+				<td>
+					<select id="mrrs-edit-status">
+						<option value="pending"><?php esc_html_e( 'Beklemede', 'manga-ruhu-request-system' ); ?></option>
+						<option value="reviewing"><?php esc_html_e( 'İnceleniyor', 'manga-ruhu-request-system' ); ?></option>
+						<option value="approved"><?php esc_html_e( 'Onaylandı', 'manga-ruhu-request-system' ); ?></option>
+						<option value="rejected"><?php esc_html_e( 'Reddedildi', 'manga-ruhu-request-system' ); ?></option>
+						<option value="translating"><?php esc_html_e( 'Çeviriye Alındı', 'manga-ruhu-request-system' ); ?></option>
+					</select>
+				</td>
+			</tr>
+			<tr id="mrrs-admin-note-row">
+				<th><label for="mrrs-edit-admin-note"><?php esc_html_e( 'Admin Notu', 'manga-ruhu-request-system' ); ?></label></th>
+				<td>
+					<textarea id="mrrs-edit-admin-note" rows="3" class="large-text" placeholder="<?php esc_attr_e( 'Reddetme sebebi veya dahili not…', 'manga-ruhu-request-system' ); ?>"></textarea>
+					<p class="description"><?php esc_html_e( 'Bu not sadece adminler tarafından görülür. Reddedildi durumunda otomatik gösterilir.', 'manga-ruhu-request-system' ); ?></p>
+				</td>
+			</tr>
+		</table>
 			<p class="submit">
 				<button type="button" class="button button-primary" id="mrrs-modal-save">
 					<?php esc_html_e( 'Kaydet', 'manga-ruhu-request-system' ); ?>
