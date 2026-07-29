@@ -164,13 +164,17 @@ final class RequestRepository {
 					$formats[]   = '%s';
 					break;
 				case 'description':
-					$row[ $key ] = wp_kses_post( (string) $data[ $key ] );
-					$formats[]   = '%s';
-					break;
-				default:
-					$row[ $key ] = sanitize_text_field( (string) $data[ $key ] );
-					$formats[]   = '%s';
-					break;
+				$row[ $key ] = wp_kses_post( (string) $data[ $key ] );
+				$formats[]   = '%s';
+				break;
+			case 'admin_note':
+				$row[ $key ] = sanitize_textarea_field( (string) $data[ $key ] );
+				$formats[]   = '%s';
+				break;
+			default:
+				$row[ $key ] = sanitize_text_field( (string) $data[ $key ] );
+				$formats[]   = '%s';
+				break;
 			}
 		}
 
@@ -261,6 +265,7 @@ final class RequestRepository {
 			'title'          => (string) ( $row->title ?? '' ),
 			'source_link'    => (string) ( $row->source_link ?? '' ),
 			'description'    => (string) ( $row->description ?? '' ),
+			'admin_note'     => (string) ( $row->admin_note ?? '' ),
 			'status'         => (string) ( $row->status ?? 'pending' ),
 			'up_votes'       => (int) ( $row->up_votes ?? 0 ),
 			'down_votes'     => (int) ( $row->down_votes ?? 0 ),
