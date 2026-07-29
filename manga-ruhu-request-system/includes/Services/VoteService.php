@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace MangaRuhu\RequestSystem\Services;
 
+use MangaRuhu\RequestSystem\Admin\Settings;
 use MangaRuhu\RequestSystem\Database\Repositories\RequestRepository;
 use MangaRuhu\RequestSystem\Database\Repositories\VoteRepository;
 use MangaRuhu\RequestSystem\Database\Schema;
@@ -54,6 +55,15 @@ final class VoteService {
 		$user_id     = get_current_user_id();
 		$ip          = $this->client_ip();
 		$fingerprint = $this->sanitize_fingerprint( $fingerprint );
+
+		// Misafir oy ayarı kontrolü
+		if ( $user_id <= 0 && ! Settings::get_option( 'allow_guest_votes', true ) ) {
+			return new WP_Error(
+				'mrrs_guest_votes_disabled',
+				__( 'Oy kullanmak için giriş yapmanız gerekiyor.', 'manga-ruhu-request-system' ),
+				array( 'status' => 403 )
+			);
+		}
 
 		if ( $user_id <= 0 && '' === $fingerprint ) {
 			return new WP_Error( 'mrrs_fingerprint_required', __( 'Tarayıcınız doğrulanamadı. JavaScript\'i etkinleştirip tekrar deneyin.', 'manga-ruhu-request-system' ), array( 'status' => 400 ) );

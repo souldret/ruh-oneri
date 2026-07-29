@@ -7,6 +7,16 @@ Versiyonlama: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [2.8.2] — 2026-07-29
+
+### Düzeltmeler
+- `VoteService::vote()` — `allow_guest_votes` ayarı kontrol edilmiyordu; misafirler ayar kapalı olsa bile oy kullanabiliyordu
+- `RequestController::create_request()` — `allow_guest_submit` ayarı kontrol edilmiyordu; misafirler ayar kapalı olsa bile öneri gönderebiliyordu
+- `public.js` — 403 hata kodlarında (`mrrs_guest_votes_disabled`, `mrrs_guest_submit_disabled`) kullanıcıya anlamlı toast mesajı gösteriliyor
+- `public.js` — `&&` entity hatası yeniden düzeltildi (her Python write'ta bozuluyordu, kalıcı fix uygulandı)
+
+---
+
 ## [2.8.1] — 2026-07-29
 
 ### Düzeltmeler

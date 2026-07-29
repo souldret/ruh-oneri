@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace MangaRuhu\RequestSystem\Api\Controllers;
 
+use MangaRuhu\RequestSystem\Admin\Settings;
 use MangaRuhu\RequestSystem\Api\RestApi;
 use MangaRuhu\RequestSystem\Database\Repositories\RequestRepository;
 use MangaRuhu\RequestSystem\Database\Repositories\VoteRepository;
@@ -189,6 +190,15 @@ final class RequestController {
 		$params = $request->get_json_params();
 		if ( ! is_array( $params ) ) {
 			$params = $request->get_params();
+		}
+
+		// Misafir öneri ayarı kontrolü
+		if ( 0 === get_current_user_id() && ! Settings::get_option( 'allow_guest_submit', true ) ) {
+			return new WP_Error(
+				'mrrs_guest_submit_disabled',
+				__( 'Öneri göndermek için giriş yapmanız gerekiyor.', 'manga-ruhu-request-system' ),
+				array( 'status' => 403 )
+			);
 		}
 
 		$title = sanitize_text_field( (string) ( $params['title'] ?? '' ) );

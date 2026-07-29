@@ -318,6 +318,11 @@ if(board){
         })
         .then(function(r){return r.json();})
         .then(function(data){
+          if(data.code==='mrrs_guest_votes_disabled'){
+            toast(data.message||'Oy kullanmak için giriş yapmanız gerekiyor.','error');
+            ab.forEach(function(b){b.disabled=false;});
+            return;
+          }
           if(typeof data.up_votes!=='undefined'){
             var uel=listEl.querySelector('[data-up-count="'+id+'"]'),
                 dl =listEl.querySelector('[data-down-count="'+id+'"]');
@@ -432,7 +437,11 @@ if(frm){
         toast('✓ Öneriniz gönderildi.','success');
         frm.reset();
       }else{
-        showNotice((res.j&&res.j.message)||'Bir hata oluştu.','error');
+        var msg=(res.j&&res.j.message)||'Bir hata oluştu.';
+        showNotice(msg,'error');
+        if(res.j&&res.j.code==='mrrs_guest_submit_disabled'){
+          toast(msg,'error');
+        }
       }
     })
     .catch(function(){showNotice('Bağlantı hatası.','error');})
