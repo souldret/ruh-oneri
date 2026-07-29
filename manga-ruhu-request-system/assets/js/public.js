@@ -88,7 +88,6 @@ function buildCard(item,q,uvt){
     +'<div class="mrrs-card__title-row"><p class="mrrs-card__title">'+th+'</p>'+badge+'</div>'
     +dh
     +nh
-    +nh
     +'<div class="mrrs-card__meta">'
     +'<span class="mrrs-card__date">'+escHtml(formatDate(item.created_at))+'</span>'
     +sp
