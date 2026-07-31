@@ -3,7 +3,7 @@
  * Plugin Name:       MangaRuhu Request System
  * Plugin URI:        https://mangaruhu.com
  * Description:       Seri öneri sistemi — kullanıcılar öneri gönderir, admin onaylar, ziyaretçiler oy verir.
- * Version:           2.8.2
+ * Version:           2.9.0
  * Requires at least: 6.0
  * Requires PHP:      8.2
  * Author:            MangaRuhu
