@@ -87,7 +87,7 @@
 					<td>
 						<strong>${escHtml(item.title)}</strong>
 						${item.description ? `<p style="margin:2px 0 0;color:#666;font-size:.85em">${escHtml(item.description.substring(0,100))}${item.description.length>100?'…':''}</p>` : ''}
-						${item.source_link ? `<p style="margin:2px 0 0;font-size:.8em"><a href="${escHtml(item.source_link)}" target="_blank" rel="noopener">Kaynak ↗</a></p>` : ''}
+						${item.source_link ? `<p style="margin:2px 0 0;font-size:.8em"><a href="${escUrl(item.source_link)}" target="_blank" rel="noopener">Kaynak ↗</a></p>` : ''}
 						<div style="margin-top:4px">
 							<button class="button button-small mrrs-edit-btn" data-id="${item.id}">Düzenle</button>
 							<button class="button button-small mrrs-delete-btn" data-id="${item.id}" style="color:#a00">Sil</button>
@@ -266,10 +266,15 @@
 	/* ── Yardımcılar ── */
 	function escHtml(str) {
 		return String(str)
-			.replace(/&/g, '&')
-			.replace(/</g, '<')
-			.replace(/>/g, '>')
-			.replace(/"/g, '"');
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;');
+	}
+
+	function escUrl(str) {
+		str = String(str).trim();
+		return /^(https?:\/\/|\/\/)/i.test(str) ? escHtml(str) : '';
 	}
 
 	function formatDate(dateStr) {

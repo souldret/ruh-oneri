@@ -125,7 +125,7 @@ final class RequestRepository {
 		$row = array(
 			'title'        => sanitize_text_field( (string) ( $data['title'] ?? '' ) ),
 			'source_link'  => esc_url_raw( (string) ( $data['source_link'] ?? '' ) ),
-			'description'  => wp_kses_post( (string) ( $data['description'] ?? '' ) ),
+			'description'  => sanitize_textarea_field( (string) ( $data['description'] ?? '' ) ),
 			'status'       => (string) ( $data['status'] ?? 'pending' ),
 			'up_votes'     => (int) ( $data['up_votes'] ?? 0 ),
 			'down_votes'   => (int) ( $data['down_votes'] ?? 0 ),
@@ -164,7 +164,7 @@ final class RequestRepository {
 					$formats[]   = '%s';
 					break;
 				case 'description':
-				$row[ $key ] = wp_kses_post( (string) $data[ $key ] );
+				$row[ $key ] = sanitize_textarea_field( (string) $data[ $key ] );
 				$formats[]   = '%s';
 				break;
 			case 'admin_note':
@@ -256,6 +256,9 @@ final class RequestRepository {
 		return $out;
 	}
 
+	/**
+	 * Tam veri dizisi — yalnızca admin bağlamında kullanılmalıdır (admin_note içerir).
+	 */
 	public function to_array( object $row ): array {
 		$user_id        = (int) ( $row->requested_by ?? 0 );
 		$submitter_name = $this->get_submitter_name( $user_id );
@@ -266,6 +269,28 @@ final class RequestRepository {
 			'source_link'    => (string) ( $row->source_link ?? '' ),
 			'description'    => (string) ( $row->description ?? '' ),
 			'admin_note'     => (string) ( $row->admin_note ?? '' ),
+			'status'         => (string) ( $row->status ?? 'pending' ),
+			'up_votes'       => (int) ( $row->up_votes ?? 0 ),
+			'down_votes'     => (int) ( $row->down_votes ?? 0 ),
+			'submitter_name' => $submitter_name,
+			'created_at'     => (string) ( $row->created_at ?? '' ),
+			'updated_at'     => (string) ( $row->updated_at ?? '' ),
+		);
+	}
+
+	/**
+	 * Herkese açık veri dizisi — admin_note alanı dahil EDİLMEZ.
+	 * Tüm public REST API yanıtlarında bu metod kullanılmalıdır.
+	 */
+	public function to_public_array( object $row ): array {
+		$user_id        = (int) ( $row->requested_by ?? 0 );
+		$submitter_name = $this->get_submitter_name( $user_id );
+
+		return array(
+			'id'             => (int) ( $row->id ?? 0 ),
+			'title'          => (string) ( $row->title ?? '' ),
+			'source_link'    => (string) ( $row->source_link ?? '' ),
+			'description'    => (string) ( $row->description ?? '' ),
 			'status'         => (string) ( $row->status ?? 'pending' ),
 			'up_votes'       => (int) ( $row->up_votes ?? 0 ),
 			'down_votes'     => (int) ( $row->down_votes ?? 0 ),

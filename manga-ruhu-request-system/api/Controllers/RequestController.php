@@ -136,16 +136,34 @@ final class RequestController {
 
 	/**
 	 * Onaylanmış önerileri listele.
+	 * Onaylı-olmayan statüler (pending, reviewing, rejected…) için manage_mrrs/manage_options yetkisi gerekir.
 	 */
-	public function list_requests( WP_REST_Request $request ): WP_REST_Response {
+	public function list_requests( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$allowed_per_page = array( 10, 20, 30, 50 );
 		$default_per_page = \MangaRuhu\RequestSystem\Admin\Settings::get_per_page();
 		$req_per_page     = (int) $request->get_param( 'per_page' );
 		$per_page         = in_array( $req_per_page, $allowed_per_page, true ) ? $req_per_page : $default_per_page;
 
 		$status = sanitize_key( (string) $request->get_param( 'status' ) );
-		$allowed_statuses = array( 'all', 'approved', 'pending', 'reviewing', 'rejected', 'translating' );
-		if ( '' === $status || ! in_array( $status, $allowed_statuses, true ) ) {
+		$public_statuses = array( 'approved' );
+		$all_statuses    = array( 'all', 'approved', 'pending', 'reviewing', 'rejected', 'translating' );
+
+		if ( '' === $status || ! in_array( $status, $all_statuses, true ) ) {
+			$status = 'approved';
+		}
+
+		// Yetkisiz kullanıcı approved dışında bir statü istiyorsa → 403 dön.
+		$is_admin = current_user_can( 'manage_mrrs' ) || current_user_can( 'manage_options' );
+		if ( ! $is_admin && ! in_array( $status, $public_statuses, true ) && 'all' !== $status ) {
+			return new WP_Error(
+				'mrrs_forbidden',
+				__( 'Bu statüdeki önerileri görüntülemek için yetkiniz yok.', 'manga-ruhu-request-system' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		// Yetkisiz kullanıcı "all" istiyorsa sadece approved'a düş.
+		if ( ! $is_admin && 'all' === $status ) {
 			$status = 'approved';
 		}
 
@@ -162,8 +180,13 @@ final class RequestController {
 			$this->requests->prime_user_cache( $result['items'] );
 		}
 
+		// Admin değilse public array kullan (admin_note içermez).
+		$serializer = $is_admin
+			? fn( object $row ): array => $this->requests->to_array( $row )
+			: fn( object $row ): array => $this->requests->to_public_array( $row );
+
 		$response = new WP_REST_Response( array(
-			'items'       => array_map( fn( object $row ): array => $this->requests->to_array( $row ), $result['items'] ),
+			'items'       => array_map( $serializer, $result['items'] ),
 			'total'       => $result['total'],
 			'page'        => $result['page'],
 			'per_page'    => $result['per_page'],
@@ -201,6 +224,12 @@ final class RequestController {
 			);
 		}
 
+		// Rate limit: saatte max 5 öneri (IP + kullanıcı bazlı).
+		$rate_check = $this->check_submit_rate_limit();
+		if ( is_wp_error( $rate_check ) ) {
+			return $rate_check;
+		}
+
 		$title = sanitize_text_field( (string) ( $params['title'] ?? '' ) );
 		if ( '' === $title ) {
 			return new WP_Error( 'mrrs_invalid_title', __( 'Seri adı zorunludur.', 'manga-ruhu-request-system' ), array( 'status' => 400 ) );
@@ -218,12 +247,15 @@ final class RequestController {
 			return new WP_Error( 'mrrs_create_failed', __( 'Öneri gönderilemedi.', 'manga-ruhu-request-system' ), array( 'status' => 500 ) );
 		}
 
+		// Başarılı submit → sayacı artır.
+		$this->hit_submit_rate_limit();
+
 		$row = $this->requests->find( $id );
 
 		return new WP_REST_Response( array(
 			'success' => true,
 			'message' => __( 'Öneriniz alındı. Admin onayından sonra yayınlanacak.', 'manga-ruhu-request-system' ),
-			'item'    => $row ? $this->requests->to_array( $row ) : array( 'id' => $id ),
+			'item'    => $row ? $this->requests->to_public_array( $row ) : array( 'id' => $id ),
 		), 201 );
 	}
 
@@ -247,6 +279,70 @@ final class RequestController {
 		}
 
 		return new WP_REST_Response( $result, 200 );
+	}
+
+	/* ── Rate limit helpers (submit) ── */
+
+	private const SUBMIT_RATE_LIMIT  = 5;   // pencere başına maksimum öneri sayısı
+	private const SUBMIT_RATE_WINDOW = 3600; // saniye cinsinden pencere (1 saat)
+
+	/**
+	 * Öneri gönderme rate limitini kontrol et (IP + kullanıcı bazlı, transient).
+	 */
+	private function check_submit_rate_limit(): true|WP_Error {
+		$limit  = (int) apply_filters( 'mrrs_submit_rate_limit', self::SUBMIT_RATE_LIMIT );
+		$window = (int) apply_filters( 'mrrs_submit_rate_window', self::SUBMIT_RATE_WINDOW );
+
+		if ( $limit <= 0 ) {
+			return true; // Limit devre dışı.
+		}
+
+		$key   = $this->submit_rate_key();
+		$count = (int) get_transient( $key );
+
+		if ( $count >= $limit ) {
+			return new WP_Error(
+				'mrrs_submit_rate_limited',
+				__( 'Çok fazla öneri gönderildi. Lütfen daha sonra tekrar deneyin.', 'manga-ruhu-request-system' ),
+				array( 'status' => 429 )
+			);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Başarılı submit sonrası sayacı artır.
+	 */
+	private function hit_submit_rate_limit(): void {
+		$window = (int) apply_filters( 'mrrs_submit_rate_window', self::SUBMIT_RATE_WINDOW );
+		$key    = $this->submit_rate_key();
+		$count  = (int) get_transient( $key );
+		set_transient( $key, $count + 1, max( 60, $window ) );
+	}
+
+	/**
+	 * IP + kullanıcı kimliğine göre benzersiz transient anahtarı üret.
+	 */
+	private function submit_rate_key(): string {
+		$user_id = get_current_user_id();
+
+		if ( $user_id > 0 ) {
+			$identifier = 'u' . $user_id;
+		} else {
+			// Misafir: IP'yi hashle.
+			$ip = '';
+			if ( ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
+				$ip = sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_CF_CONNECTING_IP'] ) );
+			}
+			if ( '' === $ip && ! empty( $_SERVER['REMOTE_ADDR'] ) ) {
+				$ip = sanitize_text_field( wp_unslash( (string) $_SERVER['REMOTE_ADDR'] ) );
+			}
+			$ip = filter_var( $ip, FILTER_VALIDATE_IP ) ? $ip : '0.0.0.0';
+			$identifier = md5( $ip . '|' . wp_salt( 'nonce' ) );
+		}
+
+		return 'mrrs_submit_rl_' . $identifier;
 	}
 
 	/**

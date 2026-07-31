@@ -150,24 +150,117 @@ final class VoteService {
 	}
 
 	public function client_ip(): string {
-		$candidates = array();
+		// Önce Cloudflare header'ı dene (güvenilir, proxy'nin kendisi ayarlar).
 		if ( ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
-			$candidates[] = (string) wp_unslash( $_SERVER['HTTP_CF_CONNECTING_IP'] );
-		}
-		if ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
-			$parts        = explode( ',', (string) wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) );
-			$candidates[] = trim( $parts[0] );
-		}
-		if ( ! empty( $_SERVER['REMOTE_ADDR'] ) ) {
-			$candidates[] = (string) wp_unslash( $_SERVER['REMOTE_ADDR'] );
-		}
-		foreach ( $candidates as $ip ) {
-			$ip = sanitize_text_field( $ip );
-			if ( filter_var( $ip, FILTER_VALIDATE_IP ) ) {
-				return $ip;
+			$cf_ip = sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_CF_CONNECTING_IP'] ) );
+			if ( filter_var( $cf_ip, FILTER_VALIDATE_IP ) ) {
+				return $cf_ip;
 			}
 		}
+
+		// X-Forwarded-For: yalnızca REMOTE_ADDR bilinen Cloudflare IP bloklarından geliyorsa güven.
+		// Aksi halde saldırgan bu header'ı istediği gibi ayarlayabilir (IP spoofing riski).
+		if ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) && ! empty( $_SERVER['REMOTE_ADDR'] ) ) {
+			$remote = sanitize_text_field( wp_unslash( (string) $_SERVER['REMOTE_ADDR'] ) );
+			if ( $this->is_cloudflare_ip( $remote ) ) {
+				$parts  = explode( ',', (string) wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) );
+				$xff_ip = sanitize_text_field( trim( $parts[0] ) );
+				if ( filter_var( $xff_ip, FILTER_VALIDATE_IP ) ) {
+					return $xff_ip;
+				}
+			}
+		}
+
+		// Son çare: gerçek bağlantı IP'si.
+		if ( ! empty( $_SERVER['REMOTE_ADDR'] ) ) {
+			$remote_ip = sanitize_text_field( wp_unslash( (string) $_SERVER['REMOTE_ADDR'] ) );
+			if ( filter_var( $remote_ip, FILTER_VALIDATE_IP ) ) {
+				return $remote_ip;
+			}
+		}
+
 		return '0.0.0.0';
+	}
+
+	/**
+	 * Verilen IP'nin bilinen Cloudflare IPv4/IPv6 CIDR bloklarından birine ait olup olmadığını kontrol et.
+	 * Kaynak: https://www.cloudflare.com/ips/
+	 */
+	private function is_cloudflare_ip( string $ip ): bool {
+		$cf_ranges = apply_filters( 'mrrs_cloudflare_ip_ranges', array(
+			// IPv4
+			'173.245.48.0/20',
+			'103.21.244.0/22',
+			'103.22.200.0/22',
+			'103.31.4.0/22',
+			'141.101.64.0/18',
+			'108.162.192.0/18',
+			'190.93.240.0/20',
+			'188.114.96.0/20',
+			'197.234.240.0/22',
+			'198.41.128.0/17',
+			'162.158.0.0/15',
+			'104.16.0.0/13',
+			'104.24.0.0/14',
+			'172.64.0.0/13',
+			'131.0.72.0/22',
+			// IPv6
+			'2400:cb00::/32',
+			'2606:4700::/32',
+			'2803:f800::/32',
+			'2405:b500::/32',
+			'2405:8100::/32',
+			'2a06:98c0::/29',
+			'2c0f:f248::/32',
+		) );
+
+		foreach ( $cf_ranges as $cidr ) {
+			if ( $this->ip_in_cidr( $ip, $cidr ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * IP adresinin CIDR bloğu içinde olup olmadığını kontrol et (IPv4 + IPv6).
+	 */
+	private function ip_in_cidr( string $ip, string $cidr ): bool {
+		list( $subnet, $bits ) = explode( '/', $cidr );
+		$bits = (int) $bits;
+
+		// IPv6 kontrolü
+		if ( str_contains( $ip, ':' ) || str_contains( $subnet, ':' ) ) {
+			$ip_bin     = inet_pton( $ip );
+			$subnet_bin = inet_pton( $subnet );
+			if ( false === $ip_bin || false === $subnet_bin ) {
+				return false;
+			}
+			$mask_bytes = $bits >> 3;
+			$mask_bits  = $bits & 7;
+			for ( $i = 0; $i < $mask_bytes; $i++ ) {
+				if ( $ip_bin[ $i ] !== $subnet_bin[ $i ] ) {
+					return false;
+				}
+			}
+			if ( $mask_bits > 0 && $mask_bytes < 16 ) {
+				$mask = 0xFF & ( 0xFF << ( 8 - $mask_bits ) );
+				if ( ( ord( $ip_bin[ $mask_bytes ] ) & $mask ) !== ( ord( $subnet_bin[ $mask_bytes ] ) & $mask ) ) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		// IPv4 kontrolü
+		$ip_long     = ip2long( $ip );
+		$subnet_long = ip2long( $subnet );
+		if ( false === $ip_long || false === $subnet_long || $bits > 32 ) {
+			return false;
+		}
+		$mask = $bits > 0 ? ( ~0 << ( 32 - $bits ) ) : 0;
+		return ( $ip_long & $mask ) === ( $subnet_long & $mask );
 	}
 
 	/* ── Private helpers ── */
@@ -223,7 +316,7 @@ final class VoteService {
 			'action'     => $action,
 			'up_votes'   => (int) ( $row->up_votes ?? 0 ),
 			'down_votes' => (int) ( $row->down_votes ?? 0 ),
-			'item'       => $this->requests->to_array( $row ),
+			'item'       => $this->requests->to_public_array( $row ),
 		);
 	}
 
@@ -256,8 +349,52 @@ final class VoteService {
 		$cooldown = (int) apply_filters( 'mrrs_vote_cooldown', self::DEFAULT_COOLDOWN );
 		$ip_hash  = md5( $ip . '|' . wp_salt( 'nonce' ) );
 
-		set_transient( 'mrrs_vote_cd_' . $ip_hash, time(), max( 1, $cooldown ) );
+		$this->set_transient_no_autoload( 'mrrs_vote_cd_' . $ip_hash, time(), max( 1, $cooldown ) );
 		$rl_key = 'mrrs_vote_rl_' . $ip_hash;
-		set_transient( $rl_key, (int) get_transient( $rl_key ) + 1, max( 60, $window ) );
+		$this->set_transient_no_autoload( $rl_key, (int) get_transient( $rl_key ) + 1, max( 60, $window ) );
+	}
+
+	/**
+	 * Object cache varsa doğrudan object cache'e yaz (wp_options'a dokunmaz).
+	 * Object cache yoksa transient'i autoload=no ile kaydet — wp_options şişmesini önler.
+	 *
+	 * Not: set_transient() WordPress'in kendi transient API'sini kullanır ve
+	 * object cache aktifse zaten wp_options'a yazmaz. Object cache yoksa
+	 * "autoload=yes" ile kaydeder; bu yüksek trafikte gereksiz yük oluşturur.
+	 * Burada bu durumu doğrudan $wpdb ile ele alıyoruz.
+	 *
+	 * @param string $transient Transient adı.
+	 * @param mixed  $value     Değer.
+	 * @param int    $expiration Süre (saniye).
+	 */
+	private function set_transient_no_autoload( string $transient, mixed $value, int $expiration ): void {
+		// Object cache etkin → normal set_transient (wp_options'a yazmaz zaten).
+		if ( wp_using_ext_object_cache() ) {
+			set_transient( $transient, $value, $expiration );
+			return;
+		}
+
+		// Object cache yok → wp_options'a autoload=no ile yaz.
+		global $wpdb;
+		$option_timeout = '_transient_timeout_' . $transient;
+		$option_value   = '_transient_' . $transient;
+		$serialized     = maybe_serialize( $value );
+		$expire_time    = time() + $expiration;
+
+		// Önce timeout seçeneğini yaz/güncelle (autoload=no).
+		$existing = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->prepare( 'SELECT option_value FROM ' . $wpdb->options . ' WHERE option_name = %s LIMIT 1', $option_timeout ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
+
+		if ( null !== $existing ) {
+			$wpdb->update( $wpdb->options, array( 'option_value' => $expire_time ), array( 'option_name' => $option_timeout ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->update( $wpdb->options, array( 'option_value' => $serialized ), array( 'option_name' => $option_value ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		} else {
+			$wpdb->insert( $wpdb->options, array( 'option_name' => $option_timeout, 'option_value' => $expire_time, 'autoload' => 'no' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->insert( $wpdb->options, array( 'option_name' => $option_value,   'option_value' => $serialized,  'autoload' => 'no' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		}
+
+		// WP internal cache'i geçersiz kıl.
+		wp_cache_delete( $transient, 'transient' );
 	}
 }

@@ -20,6 +20,7 @@ function toast(msg,type){
 
 /* ── UTILS ── */
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escUrl(s){s=String(s).trim();if(/^(https?:\/\/|\/\/)/i.test(s))return escHtml(s);return '';}
 function formatDate(ds){if(!ds)return'';var d=new Date(ds);if(isNaN(d.getTime()))return'';return d.toLocaleDateString('tr-TR',{day:'2-digit',month:'short',year:'numeric'});}
 function highlight(text,q){
   if(!q||q.length<2)return escHtml(text);
@@ -77,7 +78,7 @@ function buildCard(item,q,uvt){
   if(item.status==='rejected'&&item.admin_note){
     nh='<div class="mrrs-card__admin-note"><span class="mrrs-card__admin-note-label">❉ Red sebebi:</span>'+escHtml(item.admin_note)+'</div>';
   }
-  var sp=item.source_link?'<a class="mrrs-card__source-link" href="'+escHtml(item.source_link)+'" target="_blank" rel="noopener noreferrer">Kaynak \u2197</a>':'';
+  var sp=item.source_link?'<a class="mrrs-card__source-link" href="'+escUrl(item.source_link)+'" target="_blank" rel="noopener noreferrer">Kaynak \u2197</a>':'';
   var sub=item.submitter_name?escHtml(item.submitter_name):'Misafir';
   return'<div class="mrrs-card" role="listitem" data-id="'+item.id+'">'
     +'<div class="mrrs-card__votes">'

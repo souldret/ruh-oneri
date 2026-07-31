@@ -7,6 +7,25 @@ Versiyonlama: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [2.9.0] — 2026-07-31
+
+### Güvenlik Düzeltmeleri
+- **[KRİTİK] Bilgi İfşası / Yetkilendirme** (`RequestController::list_requests()`): `status=pending/reviewing/rejected` gibi parametreler `manage_mrrs` veya `manage_options` yetkisi olmayan kullanıcılara 403 döndürüyor; yetkisizler `all` istediğinde `approved`'a düşüyor
+- **[KRİTİK] `admin_note` İfşası**: `RequestRepository::to_public_array()` metodu eklendi — herkese açık REST API yanıtları artık moderatör notlarını asla içermiyor; `to_array()` yalnızca admin bağlamında (Ajax/admin panel) kullanılıyor
+- **[Orta] IP Spoofing** (`VoteService::client_ip()`): `X-Forwarded-For` header'ına artık yalnızca `REMOTE_ADDR` bilinen Cloudflare CIDR bloklarından geldiğinde güveniliyor; doğrudan origin'e gelen isteklerde sahtelenebilir XFF görmezden geliniyor; `is_cloudflare_ip()` / `ip_in_cidr()` yardımcı metodları eklendi (`mrrs_cloudflare_ip_ranges` filtresi ile özelleştirilebilir)
+- **[Orta] Spam/DoS** (`RequestController::create_request()`): IP ve kullanıcı ID bazlı öneri gönderme rate limit eklendi (varsayılan: saatte 5, `mrrs_submit_rate_limit` / `mrrs_submit_rate_window` filtreleri ile özelleştirilebilir)
+
+### Düzeltmeler
+- **Açıklama Tutarsızlığı** (`RequestRepository::create()`, `RequestRepository::update()`, `Ajax::save_request()`): `description` alanı `wp_kses_post()` yerine `sanitize_textarea_field()` ile sanitize ediliyor — backend düz metin, frontend `escHtml()` artık uyumlu
+- **URL XSS** (`public.js`, `admin.js`): `source_link` href attribute'u `escHtml()` yerine `escUrl()` fonksiyonu ile render ediliyor; `javascript:` ve diğer güvensiz URI şemaları reddediliyor
+- **`escHtml()` hatalı entity** (`admin.js`): `&`, `<`, `>`, `"` yerine `&amp;`, `&lt;`, `&gt;`, `&quot;` kullanılıyordu — düzeltildi
+
+### Performans
+- **Gereksiz DB İndex'leri** (`database/Schema.php`, `database/Migrator.php`): `requests` tablosundaki `KEY status (status)` (composite index'lerin leftmost prefix'i), `KEY created_at` ve `KEY mrrs_created_at` (aynı sütunda çift index) kaldırıldı; mevcut kurulumlar v2.9.0 migration bloğu ile otomatik temizleniyor
+- **Transient Autoload** (`VoteService::hit_rate_limits()`): Object cache (Redis/Memcached) yoksa rate-limit transient'leri artık `autoload=no` ile `wp_options`'a yazılıyor — yüksek trafikte autoload tablosu şişmesi önleniyor; object cache etkinse normal `set_transient()` kullanılıyor
+
+---
+
 ## [2.8.2] — 2026-07-29
 
 ### Düzeltmeler

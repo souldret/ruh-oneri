@@ -104,6 +104,27 @@ final class Migrator {
 			}
 		}
 
+		// v2.9.0: gereksiz/tekrarlanan index'leri temizle.
+		if ( version_compare( $from_version, '2.9.0', '<' ) ) {
+			$indexes = $wpdb->get_col( "SHOW INDEX FROM {$requests}", 2 ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+			// status tek başına gereksiz (mrrs_status_votes ve mrrs_status_created zaten status ile başlıyor).
+			if ( in_array( 'status', $indexes, true ) ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$requests} DROP INDEX `status`" );
+			}
+
+			// created_at ve mrrs_created_at birebir aynı sütun için çift index — birini bırak.
+			if ( in_array( 'created_at', $indexes, true ) ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$requests} DROP INDEX `created_at`" );
+			}
+			if ( in_array( 'mrrs_created_at', $indexes, true ) ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "ALTER TABLE {$requests} DROP INDEX `mrrs_created_at`" );
+			}
+		}
+
 		// v2.8.0: admin_note kolonu + performans indexleri.
 		if ( version_compare( $from_version, '2.8.0', '<' ) ) {
 			$has_note = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery

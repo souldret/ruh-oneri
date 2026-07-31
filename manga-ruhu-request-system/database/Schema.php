@@ -37,12 +37,9 @@ final class Schema {
 				created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 				PRIMARY KEY  (id),
-				KEY status (status),
 				KEY up_votes (up_votes),
-				KEY created_at (created_at),
 				KEY title (title(191)),
 				KEY mrrs_status_votes (status, up_votes),
-				KEY mrrs_created_at (created_at),
 				KEY mrrs_status_created (status, created_at)
 			) {$charset_collate};",
 

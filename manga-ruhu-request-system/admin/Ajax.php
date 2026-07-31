@@ -92,7 +92,7 @@ final class Ajax {
 		$data = array(
 			'title'       => $title,
 			'source_link' => isset( $_POST['source_link'] ) ? esc_url_raw( wp_unslash( (string) $_POST['source_link'] ) ) : '',
-			'description' => isset( $_POST['description'] ) ? wp_kses_post( wp_unslash( (string) $_POST['description'] ) ) : '',
+			'description' => isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( (string) $_POST['description'] ) ) : '',
 			'admin_note'  => isset( $_POST['admin_note'] ) ? sanitize_textarea_field( wp_unslash( (string) $_POST['admin_note'] ) ) : '',
 			'status'      => isset( $_POST['status'] ) ? sanitize_key( wp_unslash( (string) $_POST['status'] ) ) : 'pending',
 		);

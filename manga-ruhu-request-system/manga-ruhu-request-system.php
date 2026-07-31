@@ -24,8 +24,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MRRS_VERSION',         '2.8.2' );
-define( 'MRRS_DB_VERSION',      '2.8.0' );
+define( 'MRRS_VERSION',         '2.9.0' );
+define( 'MRRS_DB_VERSION',      '2.9.0' );
 define( 'MRRS_PLUGIN_FILE',     __FILE__ );
 define( 'MRRS_PLUGIN_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'MRRS_PLUGIN_URL',      plugin_dir_url( __FILE__ ) );
