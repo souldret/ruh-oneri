@@ -1,4 +1,4 @@
-/* MangaRuhu Request System - Public CSS v2.6 */
+/* MangaRuhu Request System - Public CSS v2.7 — Perf Optimised */
 
 :root {
   --mrrs-accent:          #7c3aed;
@@ -110,10 +110,9 @@
   border: 1px solid var(--mrrs-border);
   background: var(--mrrs-glass-input);
   color: var(--mrrs-text-muted);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  /* backdrop-filter removed — pill'ler tekrarlı liste elemanı, blur gereksiz GPU yükü */
   transition: background var(--mrrs-transition), border-color var(--mrrs-transition),
-              color var(--mrrs-transition), box-shadow var(--mrrs-transition), transform var(--mrrs-transition);
+              color var(--mrrs-transition), transform var(--mrrs-transition);
   white-space: nowrap;
   line-height: 1.5;
 }
@@ -130,15 +129,19 @@
   gap: 10px;
   padding: 10px 13px;
   background: var(--mrrs-glass-card);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  /* blur 10px→5px: glassmorphism korunuyor, compositing maliyeti yarıya iniyor */
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
   border: 1px solid var(--mrrs-border);
   border-radius: var(--mrrs-radius-lg);
   box-shadow: var(--mrrs-shadow-sm);
-  transition: box-shadow var(--mrrs-transition), border-color var(--mrrs-transition),
-              transform var(--mrrs-transition), background var(--mrrs-transition);
+  /* content-visibility: viewport dışı kartları layout/paint açısından atla */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 140px;
+  /* transition sadeleştirildi: background/border-color animasyonu kaldırıldı */
+  transition: box-shadow 100ms cubic-bezier(.4,0,.2,1), transform 100ms cubic-bezier(.4,0,.2,1);
 }
-.mrrs-card:hover { background:rgba(20,22,34,.85);border-color:var(--mrrs-border-hover);box-shadow:var(--mrrs-shadow);transform:translateY(-1px); }
+.mrrs-card:hover { box-shadow:var(--mrrs-shadow);transform:translateY(-1px); }
 
 /* Oy butonlari */
 .mrrs-card__votes { display:flex;flex-direction:column;gap:4px;flex-shrink:0;padding-top:1px; }
@@ -204,7 +207,8 @@ mark.mrrs-highlight { background:rgba(250,204,21,.25);color:#fde68a;border-radiu
 .mrrs-badge {
   display:inline-flex;align-items:center;gap:3px;padding:2px 7px;
   border-radius:var(--mrrs-radius-pill);font-size:.7em;font-weight:600;
-  white-space:nowrap;letter-spacing:.02em;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  white-space:nowrap;letter-spacing:.02em;
+  /* backdrop-filter kaldırıldı: .mrrs-card içinde iç içe blur → ağır GPU recomposite */
 }
 .mrrs-badge svg { flex-shrink:0; }
 .mrrs-badge--pending    { background:var(--mrrs-badge-pending-bg);   border:1px solid var(--mrrs-badge-pending-border);   color:var(--mrrs-badge-pending-color);   box-shadow:0 0 6px var(--mrrs-badge-pending-bg); }
@@ -236,9 +240,10 @@ mark.mrrs-highlight { background:rgba(250,204,21,.25);color:#fde68a;border-radiu
   min-width:32px;height:30px;padding:0 10px;border-radius:var(--mrrs-radius);
   font-size:.78em;font-weight:500;cursor:pointer;
   border:1px solid var(--mrrs-border);background:rgba(255,255,255,.04);
-  color:var(--mrrs-text-muted);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  color:var(--mrrs-text-muted);
+  /* backdrop-filter kaldırıldı: sayfa butonları tekrarlı eleman, blur gereksiz */
   transition:background var(--mrrs-transition),border-color var(--mrrs-transition),
-             color var(--mrrs-transition),transform 120ms ease;
+             color var(--mrrs-transition),transform 100ms ease;
   white-space:nowrap;line-height:1;
 }
 .mrrs-page-btn:hover:not(:disabled):not(.is-active){background:rgba(255,255,255,.09);border-color:var(--mrrs-border-hover);color:var(--mrrs-text);transform:translateY(-1px);}
@@ -260,7 +265,7 @@ mark.mrrs-highlight { background:rgba(250,204,21,.25);color:#fde68a;border-radiu
 .mrrs-btn--primary{background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%);color:#fff;box-shadow:0 2px 8px var(--mrrs-accent-glow);}
 .mrrs-btn--primary:hover{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);box-shadow:0 4px 14px var(--mrrs-accent-glow);}
 .mrrs-btn--primary:disabled{opacity:.6;cursor:not-allowed;}
-.mrrs-btn--outline{background:rgba(255,255,255,.05);border:1px solid var(--mrrs-border);color:var(--mrrs-text-muted);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+.mrrs-btn--outline{background:rgba(255,255,255,.05);border:1px solid var(--mrrs-border);color:var(--mrrs-text-muted);/* backdrop-filter kaldırıldı — tekil buton ama box-shadow yeterli */}
 .mrrs-btn--outline:hover{background:rgba(255,255,255,.09);border-color:var(--mrrs-border-hover);color:var(--mrrs-text);}
 
 /* Form wrap */
@@ -340,4 +345,33 @@ mark.mrrs-highlight { background:rgba(250,204,21,.25);color:#fde68a;border-radiu
   .mrrs-card__title{font-size:.875em;}
   .mrrs-card__title-row{flex-wrap:wrap;}
   .mrrs-toast{bottom:12px;right:12px;left:12px;max-width:none;}
+}
+
+/* prefers-reduced-motion: animasyon/geçiş hassasiyeti olan kullanıcılar için kapat */
+@media (prefers-reduced-motion: reduce) {
+  .mrrs-card,
+  .mrrs-card:hover,
+  .mrrs-pill,
+  .mrrs-pill:hover,
+  .mrrs-page-btn,
+  .mrrs-vote-btn,
+  .mrrs-btn,
+  .mrrs-toast,
+  .mrrs-form-inner,
+  .mrrs-toggle-icon {
+    transition: none !important;
+    animation: none !important;
+  }
+  /* shimmer iskelet animasyonunu durdur */
+  .mrrs-skeleton-card {
+    animation: none !important;
+    background: rgba(255,255,255,.06);
+  }
+  /* hover transform'ları iptal et */
+  .mrrs-card:hover,
+  .mrrs-pill:hover,
+  .mrrs-page-btn:hover:not(:disabled):not(.is-active),
+  .mrrs-vote-btn:active {
+    transform: none !important;
+  }
 }

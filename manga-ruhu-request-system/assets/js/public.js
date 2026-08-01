@@ -1,4 +1,4 @@
-/* MangaRuhu Request System - Public JS v2.7 */
+/* MangaRuhu Request System - Public JS v2.8 — Perf Optimised */
 /* global mrrsData */
 (function(){
 'use strict';
@@ -248,9 +248,11 @@ if(board){
       .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
       .then(function(data){
         if(data.items&&data.items.length){
-          data.items.forEach(function(item){
-            listEl.insertAdjacentHTML('beforeend',buildCard(item,st.search,gSV(item.id)));
+          /* Batch DOM insert: N ayrı reflow yerine tek seferde 1 reflow */
+          var htmlParts=data.items.map(function(item){
+            return buildCard(item,st.search,gSV(item.id));
           });
+          listEl.innerHTML=htmlParts.join('');
           var total=parseInt(data.total,10)||0;
           var perPage=parseInt(data.per_page,10)||PER_PAGE;
           st.totalPages=data.total_pages
