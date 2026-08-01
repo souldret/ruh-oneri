@@ -7,6 +7,19 @@ Versiyonlama: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [3.0.0] — 2026-08-01
+
+### Performans
+- **[Öncelik 1] İç içe `backdrop-filter` kaldırıldı** (`public.css`): `.mrrs-badge`, `.mrrs-pill`, `.mrrs-page-btn`, `.mrrs-btn--outline` üzerindeki `backdrop-filter: blur()` tamamen kaldırıldı — 50 kartlık listede GPU compositing katman maliyeti dramatik düşüş
+- **[Öncelik 1] `.mrrs-card` blur azaltıldı** (`public.css`): `blur(10px)` → `blur(5px)` — glassmorphism hissi korunuyor, kart başına GPU maliyeti yarıya iniyor
+- **[Öncelik 1] `content-visibility: auto`** (`public.css`): `.mrrs-card`'a `content-visibility: auto` + `contain-intrinsic-size: auto 140px` eklendi — tarayıcı viewport dışındaki kartların layout/paint hesaplamalarını atlıyor
+- **[Öncelik 1] Batch DOM insertion** (`public.js` v2.8): `loadPage()` içinde 50 ayrı `insertAdjacentHTML` çağrısı (50 reflow riski) → `htmlParts.map().join('')` ile tek `listEl.innerHTML` ataması (1 reflow)
+- **[Öncelik 2] Hover transition sadeleştirildi** (`public.css`): `.mrrs-card:hover`'da `background` ve `border-color` geçişleri kaldırıldı; yalnızca `box-shadow` + `transform` animasyonu kaldı; süre 150ms → 100ms
+- **[Öncelik 3] `prefers-reduced-motion` desteği** (`public.css`): Tüm `transition` ve `animation` tanımları (`mrrs-shimmer` dahil) bu medya sorgusunda devre dışı bırakılıyor; hover transform'ları da iptal ediliyor
+- **Korunan blur'lar** (tekil/az tekrarlı elemanlar): `.mrrs-search-input`, `.mrrs-form-inner__content`, `.mrrs-toast` üzerindeki `backdrop-filter` korundu
+
+---
+
 ## [2.9.0] — 2026-07-31
 
 ### Güvenlik Düzeltmeleri
