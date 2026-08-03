@@ -352,7 +352,8 @@ final class RequestRepository {
 
 		// SQL ön-filtre: normalized başlığın ilk kelimesini LIKE ile filtrele.
 		// rejected dışındaki statüler: pending, reviewing, approved, translating.
-		$first_word = mb_strtolower( strtok( $normalized, ' ' ) ?: $normalized );
+		$parts      = explode( ' ', $normalized, 2 );
+		$first_word = $parts[0];
 		$like       = '%' . $this->db->esc_like( $first_word ) . '%';
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -397,11 +398,14 @@ final class RequestRepository {
 			// similar_text() yüzde hesabı.
 			similar_text( $normalized, $norm_candidate, $pct );
 
-			// Levenshtein mesafe kontrolü.
+			// Levenshtein mesafe kontrolü (PHP sınırı: her iki string de ≤ 255 karakter olmalı).
 			$max_len   = max( mb_strlen( $normalized ), mb_strlen( $norm_candidate ) );
-			$lev       = levenshtein( $normalized, $norm_candidate );
-			$lev_limit = (int) ceil( $max_len * $levenshtein_ratio );
-			$lev_match = ( $lev <= $lev_limit );
+			$lev_match = false;
+			if ( strlen( $normalized ) <= 255 && strlen( $norm_candidate ) <= 255 ) {
+				$lev       = levenshtein( $normalized, $norm_candidate );
+				$lev_limit = (int) ceil( $max_len * $levenshtein_ratio );
+				$lev_match = ( $lev <= $lev_limit );
+			}
 
 			if ( $pct >= $threshold_pct || $lev_match ) {
 				$candidates[] = array(

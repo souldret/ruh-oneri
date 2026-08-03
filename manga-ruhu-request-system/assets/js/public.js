@@ -424,9 +424,20 @@ if(frm){
         +lucideIcon('thumbs-up')+'<span>Oy Ver</span></a>'
         +'</li>';
     });
-    html+='</ul>';
+    html+='</ul>'
+      +'<p class="mrrs-form__dup-warn__force-row">'
+      +'<button type="button" class="mrrs-form__dup-warn__force-btn">Farklı bir seri — yine de gönder</button>'
+      +'</p>';
     dupWarn.innerHTML=html;
     dupWarn.hidden=false;
+    /* "Yine de gönder" butonuna tıklanırsa force flag'i set et ve formu gönder */
+    var forceBtn=dupWarn.querySelector('.mrrs-form__dup-warn__force-btn');
+    if(forceBtn){
+      forceBtn.addEventListener('click',function(){
+        forceSubmit=true;
+        frm.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+      });
+    }
   }
 
   /* Debounce: 400ms, min 3 karakter */

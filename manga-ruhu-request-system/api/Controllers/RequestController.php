@@ -262,7 +262,7 @@ final class RequestController {
 
 		// Sunucu tarafı benzerlik kontrolü — force=true ile atlatılabilir (sert blok değil).
 		$force           = ! empty( $params['force'] ) && (bool) $params['force'];
-		$dup_threshold   = (float) apply_filters( 'mrrs_duplicate_threshold_pct', \MangaRuhu\RequestSystem\Database\Repositories\RequestRepository::DUPLICATE_THRESHOLD_PCT );
+		$dup_threshold   = (float) apply_filters( 'mrrs_duplicate_threshold_pct', RequestRepository::DUPLICATE_THRESHOLD_PCT );
 		$possible_dup_id = null;
 
 		if ( ! $force ) {
