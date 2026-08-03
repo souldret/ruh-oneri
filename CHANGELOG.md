@@ -1,5 +1,14 @@
 # Changelog — MangaRuhu Request System
 
+## [3.1.1] — 2026-08-03
+
+### Düzeltildi
+- **Form buton kayboluyor sorunu**: `mrrs-form-inner` için `max-height` sabit değer animasyonu, `grid-template-rows: 0fr → 1fr` CSS trick'i ile değiştirildi. Artık benzerlik uyarı kutusu açıldığında ya da herhangi bir içerik formu büyüttüğünde "Öneriyi Gönder" butonu ve "Açıklama" alanı kırpılmıyor.
+- **Başarılı gönderim sonrası form kapanmıyor**: Form başarıyla gönderildikten sonra artık otomatik olarak kapanıyor.
+- **JS scope sorunu**: `formToggleBtn` / `formInner` / `formIsOpen` değişkenleri dışa taşındı; submit handler artık toggle state'e erişebiliyor.
+- **`prefers-reduced-motion`**: `is-open` class'ı ile grid animasyonu da hareket azaltma kapsamına alındı.
+- **Template**: `mrrs-title` input'una `autocomplete="off"` eklendi; benzer öneri container'ı (`data-mrrs-similar`) title alanının hemen altına sabitlendi.
+
 ## [3.1.0] — 2026-08-03
 
 ### Eklendi

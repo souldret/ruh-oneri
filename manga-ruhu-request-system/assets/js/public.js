@@ -351,32 +351,37 @@ if(board){
 }
 
 /* ── FORM TOGGLE ── */
+/* is-open class toggle — max-height sabitlemesi yok, içerik büyüdükçe otomatik genişler */
 function closeFormPanel(tb,fi){
-  fi.style.maxHeight='0';fi.style.opacity='0';
+  fi.classList.remove('is-open');
+  fi.setAttribute('aria-hidden','true');
   tb.setAttribute('aria-expanded','false');
   var ic=tb.querySelector('.mrrs-toggle-icon');
   if(ic)ic.style.transform='rotate(0deg)';
 }
 function openFormPanel(tb,fi){
-  fi.style.maxHeight=fi.scrollHeight+'px';fi.style.opacity='1';
+  fi.classList.add('is-open');
+  fi.setAttribute('aria-hidden','false');
   tb.setAttribute('aria-expanded','true');
   var ic=tb.querySelector('.mrrs-toggle-icon');
   if(ic)ic.style.transform='rotate(45deg)';
 }
 
 var fw=document.querySelector('.mrrs-form-wrap');
+/* formToggleBtn / formInner: submit handler'dan erişilebilsin */
+var formToggleBtn=null,formInner=null,formIsOpen=false;
 if(fw){
   var tb=fw.querySelector('[data-mrrs-form-toggle]'),fi=fw.querySelector('.mrrs-form-inner');
   if(tb&&fi){
-    var exp=false;
+    formToggleBtn=tb;formInner=fi;
     tb.addEventListener('click',function(){
-      exp=!exp;
-      if(exp)openFormPanel(tb,fi);else closeFormPanel(tb,fi);
+      formIsOpen=!formIsOpen;
+      if(formIsOpen)openFormPanel(tb,fi);else closeFormPanel(tb,fi);
     });
     var closeBtn=fw.querySelector('[data-mrrs-form-close]');
     if(closeBtn){
       closeBtn.addEventListener('click',function(){
-        exp=false;closeFormPanel(tb,fi);
+        formIsOpen=false;closeFormPanel(tb,fi);
       });
     }
   }
@@ -511,9 +516,14 @@ if(frm){
         renderSimilarWarning([]);
         forceSubmit=false;
         lastCheckedTitle='';
+        frm.reset();
+        /* Başarılı gönderim sonrası formu kapat */
+        if(formToggleBtn&&formInner){
+          formIsOpen=false;
+          closeFormPanel(formToggleBtn,formInner);
+        }
         showNotice(res.j.message||'\u00d6neriniz al\u0131nd\u0131! Admin onay\u0131ndan sonra yay\u0131nlanacak.','success');
         toast('\u2713 \u00d6neriniz g\u00f6nderildi.','success');
-        frm.reset();
       }else{
         var msg=(res.j&&res.j.message)||'Bir hata olu\u015ftu.';
         showNotice(msg,'error');

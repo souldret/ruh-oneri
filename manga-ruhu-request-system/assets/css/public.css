@@ -272,7 +272,20 @@ mark.mrrs-highlight { background:rgba(250,204,21,.25);color:#fde68a;border-radiu
 .mrrs-form-wrap { margin-bottom:18px; }
 .mrrs-form-toggle { margin-bottom:10px; }
 .mrrs-toggle-icon{font-size:1.15em;line-height:1;font-weight:300;display:inline-block;transition:transform 180ms ease;}
-.mrrs-form-inner{overflow:hidden;max-height:0;opacity:0;transition:max-height 200ms ease,opacity 180ms ease;}
+/* grid-template-rows trick: içerik büyüdükçe otomatik genişler, max-height sabitlemesi yok */
+.mrrs-form-inner{
+  display:grid;
+  grid-template-rows:0fr;
+  opacity:0;
+  transition:grid-template-rows 220ms ease, opacity 180ms ease;
+}
+.mrrs-form-inner.is-open{
+  grid-template-rows:1fr;
+  opacity:1;
+}
+.mrrs-form-inner > .mrrs-form-inner__content{
+  overflow:hidden;
+}
 
 /* Form inner content */
 .mrrs-form-inner__content{
@@ -442,6 +455,11 @@ mark.mrrs-highlight { background:rgba(250,204,21,.25);color:#fde68a;border-radiu
   .mrrs-toggle-icon {
     transition: none !important;
     animation: none !important;
+  }
+  /* is-open anında aç — grid-template-rows animasyonu yok */
+  .mrrs-form-inner.is-open {
+    grid-template-rows: 1fr !important;
+    opacity: 1 !important;
   }
   /* shimmer iskelet animasyonunu durdur */
   .mrrs-skeleton-card {
