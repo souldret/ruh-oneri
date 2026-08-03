@@ -348,21 +348,22 @@ mark.mrrs-highlight { background:rgba(250,204,21,.25);color:#fde68a;border-radiu
 }
 
 /* ── Benzer öneri uyarı kutusu ── */
-.mrrs-form__dup-warn {
-  margin-bottom: 12px;
+.mrrs-similar-box {
+  margin-top: 8px;
   padding: 11px 13px;
   background: rgba(251,191,36,.08);
   border: 1px solid rgba(251,191,36,.30);
   border-radius: var(--mrrs-radius);
+  /* backdrop-filter yok — iç içe blur GPU maliyeti */
 }
-.mrrs-form__dup-warn__heading {
+.mrrs-similar-box__heading {
   margin: 0 0 8px;
   font-size: .8em;
   font-weight: 600;
   color: #fbbf24;
   line-height: 1.4;
 }
-.mrrs-form__dup-warn__list {
+.mrrs-similar-box__list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -370,14 +371,14 @@ mark.mrrs-highlight { background:rgba(250,204,21,.25);color:#fde68a;border-radiu
   flex-direction: column;
   gap: 6px;
 }
-.mrrs-form__dup-warn__item {
+.mrrs-similar-box__item {
   display: flex;
   align-items: center;
   gap: 7px;
   flex-wrap: wrap;
   font-size: .8em;
 }
-.mrrs-form__dup-warn__title {
+.mrrs-similar-box__title {
   flex: 1;
   min-width: 0;
   color: var(--mrrs-text);
@@ -386,29 +387,28 @@ mark.mrrs-highlight { background:rgba(250,204,21,.25);color:#fde68a;border-radiu
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.mrrs-form__dup-warn__vote-btn {
+.mrrs-similar-box__vote-btn {
   flex-shrink: 0;
   font-size: .78em;
   padding: 4px 10px;
   text-decoration: none;
-  /* düz background+border — backdrop-filter kullanılmıyor */
   background: rgba(255,255,255,.06);
   border: 1px solid var(--mrrs-border);
   color: var(--mrrs-text-muted);
 }
-.mrrs-form__dup-warn__vote-btn:hover {
+.mrrs-similar-box__vote-btn:hover {
   background: rgba(255,255,255,.11);
   border-color: var(--mrrs-border-hover);
   color: var(--mrrs-text);
 }
 
 /* "Yine de gönder" satırı */
-.mrrs-form__dup-warn__force-row {
+.mrrs-similar-box__force-row {
   margin: 8px 0 0;
   padding-top: 8px;
   border-top: 1px solid rgba(251,191,36,.18);
 }
-.mrrs-form__dup-warn__force-btn {
+.mrrs-similar-box__force-btn {
   background: none;
   border: none;
   padding: 0;
@@ -418,7 +418,7 @@ mark.mrrs-highlight { background:rgba(250,204,21,.25);color:#fde68a;border-radiu
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.mrrs-form__dup-warn__force-btn:hover { color: var(--mrrs-text-muted); }
+.mrrs-similar-box__force-btn:hover { color: var(--mrrs-text-muted); }
 
 /* Kart vurgulama (.mrrs_highlight param) */
 .mrrs-card--highlight {

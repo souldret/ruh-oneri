@@ -382,86 +382,15 @@ if(fw){
   }
 }
 
-/* ── FORM SUBMIT ── */
+/* ── FORM SUBMIT + BENZERLİK UYARISI ── */
 var frm=document.querySelector('[data-mrrs-form]');
 if(frm){
   var ntc=(frm.closest('.mrrs-form-wrap')||{}).querySelector
     ? frm.closest('.mrrs-form-wrap').querySelector('[data-mrrs-form-notice]')
     : null;
-  /* sbtn: data-mrrs-submit attribute'li buton */
   var sbtn=frm.querySelector('[data-mrrs-submit]');
-  /* Butonun orijinal label'ini DOM'dan oku, textContent set etme */
-  var SUBMIT_ORIG_HTML = sbtn ? sbtn.innerHTML : 'Öneriyi Gönder';
-  var SUBMIT_LOADING   = 'Gönderiliyor…';
-
-  /* Benzer öneri uyarı kutusu */
-  var dupWarn=frm.querySelector('[data-mrrs-dup-warn]');
-  if(!dupWarn){
-    dupWarn=document.createElement('div');
-    dupWarn.setAttribute('data-mrrs-dup-warn','');
-    dupWarn.className='mrrs-form__dup-warn';
-    dupWarn.setAttribute('role','alert');
-    dupWarn.setAttribute('aria-live','polite');
-    dupWarn.hidden=true;
-    /* sbtn'in hemen üstüne ekle */
-    if(sbtn&&sbtn.parentNode){sbtn.parentNode.insertBefore(dupWarn,sbtn);}
-    else{frm.appendChild(dupWarn);}
-  }
-
-  function hideDupWarn(){dupWarn.hidden=true;dupWarn.innerHTML='';}
-
-  function showDupWarn(items){
-    if(!items||!items.length){hideDupWarn();return;}
-    var html='<p class="mrrs-form__dup-warn__heading">Bu seriye benzer öneriler zaten var — oy vermek ister misin?</p>'
-      +'<ul class="mrrs-form__dup-warn__list">';
-    items.forEach(function(item){
-      var badge=buildStatusBadge(item.status||'pending');
-      var voteUrl=window.location.pathname+'?mrrs_highlight='+encodeURIComponent(item.id);
-      html+='<li class="mrrs-form__dup-warn__item">'
-        +'<span class="mrrs-form__dup-warn__title">'+escHtml(item.title)+'</span>'
-        +badge
-        +'<a class="mrrs-btn mrrs-btn--outline mrrs-form__dup-warn__vote-btn" href="'+voteUrl+'" rel="nofollow">'
-        +lucideIcon('thumbs-up')+'<span>Oy Ver</span></a>'
-        +'</li>';
-    });
-    html+='</ul>'
-      +'<p class="mrrs-form__dup-warn__force-row">'
-      +'<button type="button" class="mrrs-form__dup-warn__force-btn">Farklı bir seri — yine de gönder</button>'
-      +'</p>';
-    dupWarn.innerHTML=html;
-    dupWarn.hidden=false;
-    /* "Yine de gönder" butonuna tıklanırsa force flag'i set et ve formu gönder */
-    var forceBtn=dupWarn.querySelector('.mrrs-form__dup-warn__force-btn');
-    if(forceBtn){
-      forceBtn.addEventListener('click',function(){
-        forceSubmit=true;
-        frm.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
-      });
-    }
-  }
-
-  /* Debounce: 400ms, min 3 karakter */
-  var dupTimer=null;
-  var lastDupTitle='';
-  var titleEl2=frm.querySelector('[name="title"]');
-  if(titleEl2){
-    titleEl2.addEventListener('input',function(){
-      clearTimeout(dupTimer);
-      var val=titleEl2.value.trim();
-      if(val.length<3){hideDupWarn();lastDupTitle='';return;}
-      if(val===lastDupTitle)return;
-      dupTimer=setTimeout(function(){
-        lastDupTitle=val;
-        fetch(apiBase+'/requests/similar?title='+encodeURIComponent(val))
-          .then(function(r){if(!r.ok)return null;return r.json();})
-          .then(function(data){
-            if(data&&data.items&&data.items.length){showDupWarn(data.items);}
-            else{hideDupWarn();}
-          })
-          .catch(function(){/* sessiz hata — uyarı göstermemek daha iyi */});
-      },400);
-    });
-  }
+  var SUBMIT_ORIG_HTML=sbtn?sbtn.innerHTML:'Öneriyi Gönder';
+  var SUBMIT_LOADING='Gönderiliyor\u2026';
 
   function showNotice(msg,type){
     if(!ntc)return;
@@ -475,26 +404,95 @@ if(frm){
     sbtn.innerHTML=SUBMIT_ORIG_HTML;
   }
 
-  /* force flag: kullanıcı uyarıya rağmen göndermek isterse true olur */
+  /* ── Benzer öneri kutusu ── */
+  /* Template'de <div data-mrrs-similar> title input'unun hemen altında mevcut. */
+  var similarBox=document.querySelector('[data-mrrs-similar]');
+
+  function renderSimilarWarning(items){
+    if(!similarBox)return;
+    if(!items||!items.length){similarBox.hidden=true;similarBox.innerHTML='';return;}
+    var html='<p class="mrrs-similar-box__heading">Bu seriye benzer öneriler zaten var \u2014 oy vermek ister misin?</p>'
+      +'<ul class="mrrs-similar-box__list">';
+    items.forEach(function(item){
+      var badge=buildStatusBadge(item.status||'pending');
+      var voteUrl=window.location.pathname+'?mrrs_highlight='+encodeURIComponent(item.id);
+      html+='<li class="mrrs-similar-box__item">'
+        +'<span class="mrrs-similar-box__title">'+escHtml(item.title)+'</span>'
+        +badge
+        +'<a class="mrrs-btn mrrs-btn--outline mrrs-similar-box__vote-btn" href="'+voteUrl+'" rel="nofollow">'
+        +lucideIcon('thumbs-up')+'<span>Oy Ver</span></a>'
+        +'</li>';
+    });
+    html+='</ul>'
+      +'<p class="mrrs-similar-box__force-row">'
+      +'<button type="button" class="mrrs-similar-box__force-btn">Farkl\u0131 bir seri \u2014 yine de g\u00f6nder</button>'
+      +'</p>';
+    similarBox.innerHTML=html;
+    similarBox.hidden=false;
+    /* "Yine de gönder" butonunu bağla */
+    var forceBtn=similarBox.querySelector('.mrrs-similar-box__force-btn');
+    if(forceBtn){
+      forceBtn.addEventListener('click',function(){
+        forceSubmit=true;
+        frm.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+      });
+    }
+  }
+
+  /* Debounced benzerlik sorgusu — id="mrrs-title" kullan */
+  var titleInput=document.getElementById('mrrs-title');
+  var similarTimer=null;
+  var lastCheckedTitle='';
   var forceSubmit=false;
 
+  if(titleInput){
+    titleInput.addEventListener('input',function(){
+      clearTimeout(similarTimer);
+      var val=titleInput.value.trim();
+      if(val.length<3){
+        if(similarBox){similarBox.hidden=true;similarBox.innerHTML='';}
+        lastCheckedTitle='';
+        return;
+      }
+      if(val===lastCheckedTitle)return;
+      similarTimer=setTimeout(function(){
+        lastCheckedTitle=val;
+        fetch(apiBase+'/requests/similar?title='+encodeURIComponent(val),{
+          headers:{'X-WP-Nonce':nonce}
+        })
+          .then(function(r){
+            if(!r.ok){console.warn('[mrrs] similar endpoint HTTP '+r.status);return null;}
+            return r.json();
+          })
+          .then(function(data){
+            if(!data){return;}
+            renderSimilarWarning(Array.isArray(data.items)?data.items:[]);
+          })
+          .catch(function(err){
+            console.warn('[mrrs] similar-check failed:',err);
+          });
+      },400);
+    });
+  }else{
+    console.warn('[mrrs] title input bulunamadi — id="mrrs-title" bekleniyor');
+  }
+
+  /* ── Submit handler ── */
   frm.addEventListener('submit',function(e){
     e.preventDefault();
     if(ntc)ntc.hidden=true;
     if(sbtn){sbtn.disabled=true;sbtn.textContent=SUBMIT_LOADING;}
 
-    var titleEl=frm.querySelector('[name="title"]');
+    var title=(titleInput?titleInput.value:'').trim();
     var sourceEl=frm.querySelector('[name="source_link"]');
     var descEl=frm.querySelector('[name="description"]');
     var hpEl=frm.querySelector('[name="website"]');
-
-    var title=(titleEl?titleEl.value:'').trim();
     var source=sourceEl?sourceEl.value:'';
     var desc=descEl?descEl.value:'';
     var hp=hpEl?hpEl.value:'';
 
     if(!title){
-      showNotice('Seri adı zorunludur.','error');
+      showNotice('Seri ad\u0131 zorunludur.','error');
       resetSubmitBtn();
       return;
     }
@@ -510,25 +508,23 @@ if(frm){
     .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});})
     .then(function(res){
       if(res.ok&&res.j&&res.j.success){
-        hideDupWarn();
+        renderSimilarWarning([]);
         forceSubmit=false;
-        lastDupTitle='';
-        showNotice(res.j.message||'Öneriniz alındı! Admin onayından sonra yayınlanacak.','success');
-        toast('✓ Öneriniz gönderildi.','success');
+        lastCheckedTitle='';
+        showNotice(res.j.message||'\u00d6neriniz al\u0131nd\u0131! Admin onay\u0131ndan sonra yay\u0131nlanacak.','success');
+        toast('\u2713 \u00d6neriniz g\u00f6nderildi.','success');
         frm.reset();
       }else{
-        var msg=(res.j&&res.j.message)||'Bir hata oluştu.';
+        var msg=(res.j&&res.j.message)||'Bir hata olu\u015ftu.';
         showNotice(msg,'error');
-        if(res.j&&res.j.code==='mrrs_guest_submit_disabled'){
-          toast(msg,'error');
-        }
+        if(res.j&&res.j.code==='mrrs_guest_submit_disabled'){toast(msg,'error');}
       }
     })
-    .catch(function(){showNotice('Bağlantı hatası.','error');})
+    .catch(function(){showNotice('Ba\u011flant\u0131 hatas\u0131.','error');})
     .finally(function(){resetSubmitBtn();});
   });
 
-  /* mrrs_highlight param: board'da ilgili kartı vurgula */
+  /* mrrs_highlight param: board'daki ilgili kartı vurgula */
   (function(){
     var sp=new URLSearchParams(window.location.search);
     var hlId=parseInt(sp.get('mrrs_highlight'),10);
@@ -541,7 +537,6 @@ if(frm){
         setTimeout(function(){card.classList.remove('mrrs-card--highlight');},3000);
       }
     };
-    /* Board yüklendikten sonra deneyebilmek için kısa gecikme */
     setTimeout(tryHighlight,900);
   })();
 }

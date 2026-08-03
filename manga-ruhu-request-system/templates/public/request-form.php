@@ -56,8 +56,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 						class="mrrs-form__input"
 						required
 						maxlength="255"
+						autocomplete="off"
 						placeholder="<?php esc_attr_e( 'Seri adını yazın…', 'manga-ruhu-request-system' ); ?>"
 					>
+					<div class="mrrs-similar-box" data-mrrs-similar hidden aria-live="polite" role="status"></div>
 				</div>
 
 				<div class="mrrs-form__field">
