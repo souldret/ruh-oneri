@@ -347,10 +347,73 @@ mark.mrrs-highlight { background:rgba(250,204,21,.25);color:#fde68a;border-radiu
   .mrrs-toast{bottom:12px;right:12px;left:12px;max-width:none;}
 }
 
+/* ── Benzer öneri uyarı kutusu ── */
+.mrrs-form__dup-warn {
+  margin-bottom: 12px;
+  padding: 11px 13px;
+  background: rgba(251,191,36,.08);
+  border: 1px solid rgba(251,191,36,.30);
+  border-radius: var(--mrrs-radius);
+}
+.mrrs-form__dup-warn__heading {
+  margin: 0 0 8px;
+  font-size: .8em;
+  font-weight: 600;
+  color: #fbbf24;
+  line-height: 1.4;
+}
+.mrrs-form__dup-warn__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mrrs-form__dup-warn__item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  font-size: .8em;
+}
+.mrrs-form__dup-warn__title {
+  flex: 1;
+  min-width: 0;
+  color: var(--mrrs-text);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mrrs-form__dup-warn__vote-btn {
+  flex-shrink: 0;
+  font-size: .78em;
+  padding: 4px 10px;
+  text-decoration: none;
+  /* düz background+border — backdrop-filter kullanılmıyor */
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--mrrs-border);
+  color: var(--mrrs-text-muted);
+}
+.mrrs-form__dup-warn__vote-btn:hover {
+  background: rgba(255,255,255,.11);
+  border-color: var(--mrrs-border-hover);
+  color: var(--mrrs-text);
+}
+
+/* Kart vurgulama (.mrrs_highlight param) */
+.mrrs-card--highlight {
+  border-color: var(--mrrs-accent) !important;
+  box-shadow: 0 0 0 2px var(--mrrs-accent-dim), var(--mrrs-shadow) !important;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
 /* prefers-reduced-motion: animasyon/geçiş hassasiyeti olan kullanıcılar için kapat */
 @media (prefers-reduced-motion: reduce) {
   .mrrs-card,
   .mrrs-card:hover,
+  .mrrs-card--highlight,
   .mrrs-pill,
   .mrrs-pill:hover,
   .mrrs-page-btn,

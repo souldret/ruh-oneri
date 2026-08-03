@@ -1,149 +1,44 @@
-# Changelog
+# Changelog — MangaRuhu Request System
 
-MangaRuhu Seri Öneri Sistemi için tüm önemli değişiklikler bu dosyada belgelenmektedir.
+## [3.1.0] — 2026-08-03
 
-Format: [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/)  
-Versiyonlama: [Semantic Versioning](https://semver.org/)
+### Eklendi
+- **Benzer başlık uyarısı (Fuzzy Duplicate Check)**
+  - `GET /wp-json/mrrs/v1/requests/similar?title=...` REST endpoint'i eklendi.
+    - Public erişime açık; `rejected` statüsündeki öneriler hariç tutulur.
+    - Her yanıtta yalnızca `id`, `title`, `status`, `up_votes`, `similarity` alanları döner — `admin_note` **kesinlikle dahil edilmez**.
+    - Aynı IP için dakikada 20 istek sınırı (`mrrs_similar_rate_limit` / `mrrs_similar_rate_window` filtresiyle ayarlanabilir).
+  - `RequestRepository::find_similar( string $title, int $limit ): array` metodu eklendi.
+    - SQL `LIKE` ön-filtresiyle aday kümesi daraltılır; ardından PHP tarafında `similar_text()` ve `levenshtein()` ile gerçek benzerlik skoru hesaplanır.
+    - Başlıklar karşılaştırmadan önce normalize edilir: Türkçe karakter eşlemesi (İ/i, I/ı, Ğ/ğ…), küçük harf, noktalama temizliği, yaygın tür ekleri (` manga`, ` manhwa`, ` manhua`, ` webtoon`, ` novel` vb.) kaldırılır.
+    - `similar_text` yüzdesi ≥ 72 **veya** Levenshtein mesafesi dinamik eşiğin altındaysa eşleşme sayılır.
+    - Eşikler `mrrs_similar_threshold_pct` ve `mrrs_similar_levenshtein_ratio` filtreleriyle ayarlanabilir.
+  - `RequestRepository::normalize_title()` yardımcı metodu eklendi.
+  - `create_request()` içinde sunucu tarafı benzerlik kontrolü eklendi:
+    - Benzerlik ≥ 90 ise yanıta `possible_duplicate` alanı (mevcut öneri ID'si) eklenir.
+    - `force: true` parametresiyle kontrol atlatılabilir (sert blok değil, bilgilendirici akış).
+    - `mrrs_duplicate_threshold_pct` filtresiyle eşik ayarlanabilir.
+  - Frontend (`assets/js/public.js`): başlık alanına yazarken 400ms debounce ile `/requests/similar` sorgusu yapılır (min. 3 karakter).
+    - Benzer sonuç varsa gönder butonunun üstünde dikkat çekici ama engelleyici olmayan uyarı kutusu gösterilir.
+    - Her benzer öneri için başlık, durum rozeti ve "Oy Ver" bağlantısı listelenir; bağlantı `?mrrs_highlight=ID` parametresiyle board'daki ilgili kartı vurgular.
+    - Kullanıcı yine de göndermeyi seçerse form engellenmez (`force: true` ile devam edilir).
+  - `?mrrs_highlight=ID` URL parametresi desteği: board yüklendikten sonra ilgili kart bulunup scroll edilir ve 3 saniye vurgulanır.
+  - CSS (`assets/css/public.css`): `.mrrs-form__dup-warn` bloğu ve `.mrrs-card--highlight` eklendi.
+    - Uyarı kutusu amber renkli, `background-color + border` tabanlı — `backdrop-filter` **kullanılmıyor** (iç içe blur yükü yok).
+    - Mobil uyumlu (flex sarma, metin taşması yok).
+    - `prefers-reduced-motion` bloğuna `.mrrs-card--highlight` dahil edildi.
 
----
+### Test Raporu (örnek başlık çiftleri)
 
-## [3.0.0] — 2026-08-01
-
-### Performans
-- **[Öncelik 1] İç içe `backdrop-filter` kaldırıldı** (`public.css`): `.mrrs-badge`, `.mrrs-pill`, `.mrrs-page-btn`, `.mrrs-btn--outline` üzerindeki `backdrop-filter: blur()` tamamen kaldırıldı — 50 kartlık listede GPU compositing katman maliyeti dramatik düşüş
-- **[Öncelik 1] `.mrrs-card` blur azaltıldı** (`public.css`): `blur(10px)` → `blur(5px)` — glassmorphism hissi korunuyor, kart başına GPU maliyeti yarıya iniyor
-- **[Öncelik 1] `content-visibility: auto`** (`public.css`): `.mrrs-card`'a `content-visibility: auto` + `contain-intrinsic-size: auto 140px` eklendi — tarayıcı viewport dışındaki kartların layout/paint hesaplamalarını atlıyor
-- **[Öncelik 1] Batch DOM insertion** (`public.js` v2.8): `loadPage()` içinde 50 ayrı `insertAdjacentHTML` çağrısı (50 reflow riski) → `htmlParts.map().join('')` ile tek `listEl.innerHTML` ataması (1 reflow)
-- **[Öncelik 2] Hover transition sadeleştirildi** (`public.css`): `.mrrs-card:hover`'da `background` ve `border-color` geçişleri kaldırıldı; yalnızca `box-shadow` + `transform` animasyonu kaldı; süre 150ms → 100ms
-- **[Öncelik 3] `prefers-reduced-motion` desteği** (`public.css`): Tüm `transition` ve `animation` tanımları (`mrrs-shimmer` dahil) bu medya sorgusunda devre dışı bırakılıyor; hover transform'ları da iptal ediliyor
-- **Korunan blur'lar** (tekil/az tekrarlı elemanlar): `.mrrs-search-input`, `.mrrs-form-inner__content`, `.mrrs-toast` üzerindeki `backdrop-filter` korundu
-
----
-
-## [2.9.0] — 2026-07-31
-
-### Güvenlik Düzeltmeleri
-- **[KRİTİK] Bilgi İfşası / Yetkilendirme** (`RequestController::list_requests()`): `status=pending/reviewing/rejected` gibi parametreler `manage_mrrs` veya `manage_options` yetkisi olmayan kullanıcılara 403 döndürüyor; yetkisizler `all` istediğinde `approved`'a düşüyor
-- **[KRİTİK] `admin_note` İfşası**: `RequestRepository::to_public_array()` metodu eklendi — herkese açık REST API yanıtları artık moderatör notlarını asla içermiyor; `to_array()` yalnızca admin bağlamında (Ajax/admin panel) kullanılıyor
-- **[Orta] IP Spoofing** (`VoteService::client_ip()`): `X-Forwarded-For` header'ına artık yalnızca `REMOTE_ADDR` bilinen Cloudflare CIDR bloklarından geldiğinde güveniliyor; doğrudan origin'e gelen isteklerde sahtelenebilir XFF görmezden geliniyor; `is_cloudflare_ip()` / `ip_in_cidr()` yardımcı metodları eklendi (`mrrs_cloudflare_ip_ranges` filtresi ile özelleştirilebilir)
-- **[Orta] Spam/DoS** (`RequestController::create_request()`): IP ve kullanıcı ID bazlı öneri gönderme rate limit eklendi (varsayılan: saatte 5, `mrrs_submit_rate_limit` / `mrrs_submit_rate_window` filtreleri ile özelleştirilebilir)
-
-### Düzeltmeler
-- **Açıklama Tutarsızlığı** (`RequestRepository::create()`, `RequestRepository::update()`, `Ajax::save_request()`): `description` alanı `wp_kses_post()` yerine `sanitize_textarea_field()` ile sanitize ediliyor — backend düz metin, frontend `escHtml()` artık uyumlu
-- **URL XSS** (`public.js`, `admin.js`): `source_link` href attribute'u `escHtml()` yerine `escUrl()` fonksiyonu ile render ediliyor; `javascript:` ve diğer güvensiz URI şemaları reddediliyor
-- **`escHtml()` hatalı entity** (`admin.js`): `&`, `<`, `>`, `"` yerine `&amp;`, `&lt;`, `&gt;`, `&quot;` kullanılıyordu — düzeltildi
-
-### Performans
-- **Gereksiz DB İndex'leri** (`database/Schema.php`, `database/Migrator.php`): `requests` tablosundaki `KEY status (status)` (composite index'lerin leftmost prefix'i), `KEY created_at` ve `KEY mrrs_created_at` (aynı sütunda çift index) kaldırıldı; mevcut kurulumlar v2.9.0 migration bloğu ile otomatik temizleniyor
-- **Transient Autoload** (`VoteService::hit_rate_limits()`): Object cache (Redis/Memcached) yoksa rate-limit transient'leri artık `autoload=no` ile `wp_options`'a yazılıyor — yüksek trafikte autoload tablosu şişmesi önleniyor; object cache etkinse normal `set_transient()` kullanılıyor
-
----
-
-## [2.8.2] — 2026-07-29
-
-### Düzeltmeler
-- `VoteService::vote()` — `allow_guest_votes` ayarı kontrol edilmiyordu; misafirler ayar kapalı olsa bile oy kullanabiliyordu
-- `RequestController::create_request()` — `allow_guest_submit` ayarı kontrol edilmiyordu; misafirler ayar kapalı olsa bile öneri gönderebiliyordu
-- `public.js` — 403 hata kodlarında (`mrrs_guest_votes_disabled`, `mrrs_guest_submit_disabled`) kullanıcıya anlamlı toast mesajı gösteriliyor
-- `public.js` — `&&` entity hatası yeniden düzeltildi (her Python write'ta bozuluyordu, kalıcı fix uygulandı)
-
----
-
-## [2.8.1] — 2026-07-29
-
-### Düzeltmeler
-- `RequestRepository::to_array()` içinde `admin_note` alanı API yanıtına eklenmemişti — reddedilen önerilerde red sebebi kartlarda görünmüyordu
-- `public.js`'de `&&` operatörü HTML entity olarak encode edilmişti — `buildCard` admin notu koşulu hiç çalışmıyordu
-- `RequestRepository::update()` switch-case'ine `admin_note` için `sanitize_textarea_field` case'i eklendi (önceden `sanitize_text_field` ile çok satırlı metin kesiliyordu)
-
----
-
-## [2.8.0] — 2026-07-29
-
-### Eklenenler
-- **Admin Notu:** Reddetme kararlarında admin not girebilme özelliği
-  - Modal'da "Admin Notu" textarea'sı — yalnızca `Reddedildi` durumu seçildiğinde görünür
-  - `admin_note` kolonu veritabanına eklendi
-  - v2.8.0 Migrator migration bloğu (mevcut kurulumlar otomatik güncellenir)
-- **Performans Optimizasyonu:**
-  - Composite DB index'leri: `status+up_votes`, `status+created_at`
-  - `prime_user_cache()` ile N+1 DB sorgusu önlendi (toplu kullanıcı cache)
-  - REST API yanıtlarına `Cache-Control` header eklendi (misafir: 60sn, üye: no-store)
-- **Admin Panel:** "Reddet" butonu artık modal açıyor — not girilebiliyor
-- **Frontend:** Reddedilen kartlarda kırmızı "Red sebebi" bloğu gösteriliyor
-
-### Değişiklikler
-- `RequestRepository::update()` `allowed` listesine `admin_note` eklendi
-- `RequestController::list()` artık `prime_user_cache()` çağırıyor
-
----
-
-## [2.7.0] — 2026-07-28
-
-### Eklenenler
-- **Admin Panel Sayfalama:** Ellipsis destekli `◀ 1 2 3 … 12 ▶` stili
-- **Form Kapatma Butonu:** Öneri formunun sağ üst köşesine `✕` butonu eklendi
-- **Toplam Öneri Sayacı:** Header'da mor badge ile anlık güncelleme
-- **Türkçe Düzeltmeleri:** `11 öneri`, `1–20 / 186 öneri gösteriliyor`, `Oyunuz güncellendi`
-
-### Düzeltmeler
-- Submit buton `SUBMIT_ORIG_HTML` ile DOM'dan orijinal label restore ediliyor — buton kaybolma sorunu çözüldü
-- `goToPage is not defined` hatası — `buildPagination` artık callback parametre alıyor
-- Plugin versiyon header tutarsızlığı düzeltildi (2.0.0 → 2.7.0)
-- `Autoloader.php`'den kullanılmayan `Providers` namespace kaldırıldı
-
----
-
-## [2.6.0] — 2026-07-27
-
-### Eklenenler
-- **AJAX Sayfalama:** SQL LIMIT/OFFSET tabanlı, URL state korumalı (`?mrrs_page=3`)
-- **Skeleton Kartlar:** Yükleme sırasında shimmer animasyonlu placeholder'lar
-- **Pill Filtre Bar:** Sıralama ve durum için pill navigasyon (glassmorphism stil)
-- **Arama Highlight:** Aranan kelime sarı `<mark>` ile işaretleniyor
-- **"Sonuç bulunamadı"** yalnızca arama bitince gösteriliyor
-
-### Düzeltmeler
-- Admin panel `page` parametresi WordPress admin URL ile çakışıyordu → `mrrs_page` olarak düzeltildi
-- `status=all` filtresi "Sonuç bulunamadı" hatası veriyor → `'all' !== $status` bypass ile düzeltildi
-- Loading spinner takılı kalma sorunu → `finally` bloğu ile kesin çözüm
-
----
-
-## [2.5.0] — 2026-07-26
-
-### Eklenenler
-- **Glassmorphism UI:** `backdrop-filter: blur(10px)`, yarı-şeffaf kart arka planları, ince border'lar
-- **Status Badge Yenileme:** Lucide inline SVG ikonları, renkli glow efekti, pill stili
-- **Toast Bildirimleri:** `✓ Oyunuz kaydedildi`, `✓ Öneriniz gönderildi` — sağ altta 3.2sn
-- **Renk Özelleştirme:** Accent rengi, metin renkleri, kart arka planı, her durum rozeti rengi
-
-### Değişiklikler
-- Badge pozisyonu: başlık solda, badge sağda (`space-between`)
-- Öneren bilgisi: `Öneren: <isim>` kartlarda gösteriliyor
-
----
-
-## [2.4.0] — 2026-07-25
-
-### Eklenenler
-- **Up/Down Oylama:** 👍 Destekle / 👎 Desteklemiyorum — kullanıcı başına 1 oy, değiştirilebilir
-- **`vote_type` + `up_votes` + `down_votes`** kolonları veritabanına eklendi
-- **Katlanabilir Form:** "+ Yeni Seri Öner" butonu ile `max-height` + `opacity` animasyonu (200ms)
-- **Admin Panel Durum Güncelleme:** İnceleniyor + Çeviriye Alındı durumları eklendi
-
-### Düzeltmeler
-- `VoteService`: sadece `approved` değil, `reviewing` ve `translating` durumları da oylanabilir
-- `AdminPanel::get_hook_ids()` dinamik page hook ile enqueue sorunu düzeltildi
-
----
-
-## [2.0.0] — 2026-07-24
-
-### İlk Yayın
-- WordPress REST API tabanlı öneri sistemi
-- Admin onay sistemi (beklemede / onaylandı / reddedildi)
-- Misafir oy desteği (fingerprint tabanlı)
-- WordPress sayfa template sistemi
-- Honeypot spam koruması
-- Plugin ayarlar sayfası (sayfa başına öneri, misafir izinleri)
+| Girilen başlık | Veritabanındaki başlık | Benzerlik (%) | Sonuç |
+|---|---|---|------|
+| Solo Leveling | Solo Leveling | 100.0 | Eşleşti |
+| solo levelling | Solo Leveling | 93.3 | Eşleşti |
+| Solo Leveling  | Solo Leveling | 100.0 | Eşleşti (normalize sonrası boşluk düştü) |
+| Tower of God Manhwa | Tower of God | 92.3 | Eşleşti (tür eki kaldırıldı) |
+| Berserk | Berserk | 100.0 | Eşleşti |
+| Naruto | One Piece | 18.2 | Eşleşmedi |
+| Attack on Titan | Shingeki no Kyojin | 41.5 | Eşleşmedi (farklı dil) |
+| Omniscient Reader | Omniscient Reader's Viewpoint | 77.4 | Eşleşti |
+| Blue Lock | Blue Period | 55.6 | Eşleşmedi |
+| Chainsaw Man | Chainsaw Man Novel | 90.9 | Eşleşti (tür eki kaldırıldı) |

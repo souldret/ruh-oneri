@@ -31,6 +31,31 @@ final class RequestController {
 	}
 
 	public function register_routes(): void {
+		// GET /requests/similar?title=... — benzer başlık kontrolü
+		register_rest_route(
+			RestApi::NAMESPACE,
+			'/requests/similar',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'similar_requests' ),
+					'permission_callback' => '__return_true',
+					'args'                => array(
+						'title' => array(
+							'type'              => 'string',
+							'required'          => true,
+							'sanitize_callback' => 'sanitize_text_field',
+						),
+						'limit' => array(
+							'type'              => 'integer',
+							'default'           => 5,
+							'sanitize_callback' => 'absint',
+						),
+					),
+				),
+			)
+		);
+
 		// GET /requests — listele
 		// POST /requests — yeni öneri gönder
 		register_rest_route(
@@ -235,6 +260,18 @@ final class RequestController {
 			return new WP_Error( 'mrrs_invalid_title', __( 'Seri adı zorunludur.', 'manga-ruhu-request-system' ), array( 'status' => 400 ) );
 		}
 
+		// Sunucu tarafı benzerlik kontrolü — force=true ile atlatılabilir (sert blok değil).
+		$force           = ! empty( $params['force'] ) && (bool) $params['force'];
+		$dup_threshold   = (float) apply_filters( 'mrrs_duplicate_threshold_pct', \MangaRuhu\RequestSystem\Database\Repositories\RequestRepository::DUPLICATE_THRESHOLD_PCT );
+		$possible_dup_id = null;
+
+		if ( ! $force ) {
+			$similar = $this->requests->find_similar( $title, 1 );
+			if ( ! empty( $similar ) && $similar[0]['similarity'] >= $dup_threshold ) {
+				$possible_dup_id = $similar[0]['id'];
+			}
+		}
+
 		$id = $this->requests->create( array(
 			'title'        => $title,
 			'source_link'  => (string) ( $params['source_link'] ?? '' ),
@@ -250,13 +287,19 @@ final class RequestController {
 		// Başarılı submit → sayacı artır.
 		$this->hit_submit_rate_limit();
 
-		$row = $this->requests->find( $id );
-
-		return new WP_REST_Response( array(
+		$row      = $this->requests->find( $id );
+		$response = array(
 			'success' => true,
 			'message' => __( 'Öneriniz alındı. Admin onayından sonra yayınlanacak.', 'manga-ruhu-request-system' ),
 			'item'    => $row ? $this->requests->to_public_array( $row ) : array( 'id' => $id ),
-		), 201 );
+		);
+
+		// Olası mükerrer varsa bilgilendirici alan ekle — admin_note içermiyor.
+		if ( null !== $possible_dup_id ) {
+			$response['possible_duplicate'] = $possible_dup_id;
+		}
+
+		return new WP_REST_Response( $response, 201 );
 	}
 
 	/**
@@ -285,6 +328,13 @@ final class RequestController {
 
 	private const SUBMIT_RATE_LIMIT  = 5;   // pencere başına maksimum öneri sayısı
 	private const SUBMIT_RATE_WINDOW = 3600; // saniye cinsinden pencere (1 saat)
+
+	/* ── Rate limit helpers (similar search) ── */
+
+	/** /requests/similar için dakika başına maksimum istek sayısı. */
+	private const SIMILAR_RATE_LIMIT  = 20;
+	/** /requests/similar pencere süresi (saniye). */
+	private const SIMILAR_RATE_WINDOW = 60;
 
 	/**
 	 * Öneri gönderme rate limitini kontrol et (IP + kullanıcı bazlı, transient).
@@ -322,6 +372,56 @@ final class RequestController {
 	}
 
 	/**
+	 * /requests/similar rate limitini kontrol et.
+	 */
+	private function check_similar_rate_limit(): true|WP_Error {
+		$limit  = (int) apply_filters( 'mrrs_similar_rate_limit', self::SIMILAR_RATE_LIMIT );
+		$window = (int) apply_filters( 'mrrs_similar_rate_window', self::SIMILAR_RATE_WINDOW );
+
+		if ( $limit <= 0 ) {
+			return true;
+		}
+
+		$key   = $this->similar_rate_key();
+		$count = (int) get_transient( $key );
+
+		if ( $count >= $limit ) {
+			return new WP_Error(
+				'mrrs_similar_rate_limited',
+				__( 'Çok fazla istek gönderildi. Lütfen bekleyin.', 'manga-ruhu-request-system' ),
+				array( 'status' => 429 )
+			);
+		}
+
+		return true;
+	}
+
+	/**
+	 * /requests/similar rate limit sayacını artır.
+	 */
+	private function hit_similar_rate_limit(): void {
+		$window = (int) apply_filters( 'mrrs_similar_rate_window', self::SIMILAR_RATE_WINDOW );
+		$key    = $this->similar_rate_key();
+		$count  = (int) get_transient( $key );
+		set_transient( $key, $count + 1, max( 30, $window ) );
+	}
+
+	/**
+	 * /requests/similar için IP bazlı transient anahtarı üret.
+	 */
+	private function similar_rate_key(): string {
+		$ip = '';
+		if ( ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
+			$ip = sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_CF_CONNECTING_IP'] ) );
+		}
+		if ( '' === $ip && ! empty( $_SERVER['REMOTE_ADDR'] ) ) {
+			$ip = sanitize_text_field( wp_unslash( (string) $_SERVER['REMOTE_ADDR'] ) );
+		}
+		$ip = filter_var( $ip, FILTER_VALIDATE_IP ) ? $ip : '0.0.0.0';
+		return 'mrrs_similar_rl_' . md5( $ip . '|' . wp_salt( 'nonce' ) );
+	}
+
+	/**
 	 * IP + kullanıcı kimliğine göre benzersiz transient anahtarı üret.
 	 */
 	private function submit_rate_key(): string {
@@ -343,6 +443,45 @@ final class RequestController {
 		}
 
 		return 'mrrs_submit_rl_' . $identifier;
+	}
+
+	/**
+	 * Benzer başlıklı önerileri döndür (public, rate limited).
+	 * GET /wp-json/mrrs/v1/requests/similar?title=...
+	 */
+	public function similar_requests( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		// Rate limit: aynı IP için dakikada 20 istek.
+		$rl_check = $this->check_similar_rate_limit();
+		if ( is_wp_error( $rl_check ) ) {
+			return $rl_check;
+		}
+		$this->hit_similar_rate_limit();
+
+		$title = sanitize_text_field( (string) $request->get_param( 'title' ) );
+		if ( mb_strlen( trim( $title ) ) < 3 ) {
+			return new WP_REST_Response( array( 'items' => array() ), 200 );
+		}
+
+		$limit   = min( 5, max( 1, (int) $request->get_param( 'limit' ) ) );
+		$similar = $this->requests->find_similar( $title, $limit );
+
+		// Yanıta sadece izin verilen alanları ekle — admin_note KESİNLİKLE yok.
+		$items = array_map(
+			static function ( array $s ): array {
+				return array(
+					'id'         => $s['id'],
+					'title'      => $s['title'],
+					'status'     => $s['status'],
+					'up_votes'   => $s['up_votes'],
+					'similarity' => $s['similarity'],
+				);
+			},
+			$similar
+		);
+
+		$response = new WP_REST_Response( array( 'items' => $items ), 200 );
+		$response->header( 'Cache-Control', 'no-store' );
+		return $response;
 	}
 
 	/**

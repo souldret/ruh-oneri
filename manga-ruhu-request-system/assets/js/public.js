@@ -394,6 +394,64 @@ if(frm){
   var SUBMIT_ORIG_HTML = sbtn ? sbtn.innerHTML : 'Öneriyi Gönder';
   var SUBMIT_LOADING   = 'Gönderiliyor…';
 
+  /* Benzer öneri uyarı kutusu */
+  var dupWarn=frm.querySelector('[data-mrrs-dup-warn]');
+  if(!dupWarn){
+    dupWarn=document.createElement('div');
+    dupWarn.setAttribute('data-mrrs-dup-warn','');
+    dupWarn.className='mrrs-form__dup-warn';
+    dupWarn.setAttribute('role','alert');
+    dupWarn.setAttribute('aria-live','polite');
+    dupWarn.hidden=true;
+    /* sbtn'in hemen üstüne ekle */
+    if(sbtn&&sbtn.parentNode){sbtn.parentNode.insertBefore(dupWarn,sbtn);}
+    else{frm.appendChild(dupWarn);}
+  }
+
+  function hideDupWarn(){dupWarn.hidden=true;dupWarn.innerHTML='';}
+
+  function showDupWarn(items){
+    if(!items||!items.length){hideDupWarn();return;}
+    var html='<p class="mrrs-form__dup-warn__heading">Bu seriye benzer öneriler zaten var — oy vermek ister misin?</p>'
+      +'<ul class="mrrs-form__dup-warn__list">';
+    items.forEach(function(item){
+      var badge=buildStatusBadge(item.status||'pending');
+      var voteUrl=window.location.pathname+'?mrrs_highlight='+encodeURIComponent(item.id);
+      html+='<li class="mrrs-form__dup-warn__item">'
+        +'<span class="mrrs-form__dup-warn__title">'+escHtml(item.title)+'</span>'
+        +badge
+        +'<a class="mrrs-btn mrrs-btn--outline mrrs-form__dup-warn__vote-btn" href="'+voteUrl+'" rel="nofollow">'
+        +lucideIcon('thumbs-up')+'<span>Oy Ver</span></a>'
+        +'</li>';
+    });
+    html+='</ul>';
+    dupWarn.innerHTML=html;
+    dupWarn.hidden=false;
+  }
+
+  /* Debounce: 400ms, min 3 karakter */
+  var dupTimer=null;
+  var lastDupTitle='';
+  var titleEl2=frm.querySelector('[name="title"]');
+  if(titleEl2){
+    titleEl2.addEventListener('input',function(){
+      clearTimeout(dupTimer);
+      var val=titleEl2.value.trim();
+      if(val.length<3){hideDupWarn();lastDupTitle='';return;}
+      if(val===lastDupTitle)return;
+      dupTimer=setTimeout(function(){
+        lastDupTitle=val;
+        fetch(apiBase+'/requests/similar?title='+encodeURIComponent(val))
+          .then(function(r){if(!r.ok)return null;return r.json();})
+          .then(function(data){
+            if(data&&data.items&&data.items.length){showDupWarn(data.items);}
+            else{hideDupWarn();}
+          })
+          .catch(function(){/* sessiz hata — uyarı göstermemek daha iyi */});
+      },400);
+    });
+  }
+
   function showNotice(msg,type){
     if(!ntc)return;
     ntc.textContent=msg;
@@ -405,6 +463,9 @@ if(frm){
     sbtn.disabled=false;
     sbtn.innerHTML=SUBMIT_ORIG_HTML;
   }
+
+  /* force flag: kullanıcı uyarıya rağmen göndermek isterse true olur */
+  var forceSubmit=false;
 
   frm.addEventListener('submit',function(e){
     e.preventDefault();
@@ -427,14 +488,20 @@ if(frm){
       return;
     }
 
+    var payload={title:title,source_link:source,description:desc,website:hp};
+    if(forceSubmit)payload.force=true;
+
     fetch(apiBase+'/requests',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-WP-Nonce':nonce},
-      body:JSON.stringify({title:title,source_link:source,description:desc,website:hp})
+      body:JSON.stringify(payload)
     })
     .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});})
     .then(function(res){
       if(res.ok&&res.j&&res.j.success){
+        hideDupWarn();
+        forceSubmit=false;
+        lastDupTitle='';
         showNotice(res.j.message||'Öneriniz alındı! Admin onayından sonra yayınlanacak.','success');
         toast('✓ Öneriniz gönderildi.','success');
         frm.reset();
@@ -449,5 +516,22 @@ if(frm){
     .catch(function(){showNotice('Bağlantı hatası.','error');})
     .finally(function(){resetSubmitBtn();});
   });
+
+  /* mrrs_highlight param: board'da ilgili kartı vurgula */
+  (function(){
+    var sp=new URLSearchParams(window.location.search);
+    var hlId=parseInt(sp.get('mrrs_highlight'),10);
+    if(!hlId||hlId<=0)return;
+    var tryHighlight=function(){
+      var card=document.querySelector('.mrrs-card[data-id="'+hlId+'"]');
+      if(card){
+        card.classList.add('mrrs-card--highlight');
+        card.scrollIntoView({behavior:'smooth',block:'center'});
+        setTimeout(function(){card.classList.remove('mrrs-card--highlight');},3000);
+      }
+    };
+    /* Board yüklendikten sonra deneyebilmek için kısa gecikme */
+    setTimeout(tryHighlight,900);
+  })();
 }
 })();

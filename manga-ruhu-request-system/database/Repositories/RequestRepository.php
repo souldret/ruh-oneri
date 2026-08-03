@@ -319,6 +319,137 @@ final class RequestRepository {
 		};
 	}
 
+	/* ── Benzer başlık eşleştirme sabitleri ── */
+
+	/** similar_text() yüzde eşiği — bu değer veya üstü "benzer" sayılır. */
+	public const SIMILAR_THRESHOLD_PCT = 72;
+
+	/** Levenshtein mesafe eşiği: her karaktere bu oran uygulanır (kısa başlıklar için dinamik). */
+	public const SIMILAR_LEVENSHTEIN_RATIO = 0.25;
+
+	/** Yüksek benzerlik eşiği — olası mükerrer olarak işaretlenir (%90+). */
+	public const DUPLICATE_THRESHOLD_PCT = 90;
+
+	/** Sonuç limiti (benzer öneriler). */
+	public const SIMILAR_LIMIT = 5;
+
+	/**
+	 * Verilen başlığa benzer, rejected dışındaki önerileri döndürür.
+	 *
+	 * Önce SQL LIKE ön-filtresiyle aday kümesini daraltır; ardından
+	 * PHP tarafında similar_text() + levenshtein() ile gerçek benzerlik
+	 * skoru hesaplayıp eşik üstü sonuçları skor sıralamasıyla döndürür.
+	 *
+	 * @param string $title Aranacak başlık.
+	 * @param int    $limit Maksimum döndürülecek sonuç sayısı.
+	 * @return array{ id: int, title: string, status: string, up_votes: int, similarity: float }[]
+	 */
+	public function find_similar( string $title, int $limit = self::SIMILAR_LIMIT ): array {
+		$normalized = $this->normalize_title( $title );
+		if ( mb_strlen( $normalized ) < 2 ) {
+			return array();
+		}
+
+		// SQL ön-filtre: normalized başlığın ilk kelimesini LIKE ile filtrele.
+		// rejected dışındaki statüler: pending, reviewing, approved, translating.
+		$first_word = mb_strtolower( strtok( $normalized, ' ' ) ?: $normalized );
+		$like       = '%' . $this->db->esc_like( $first_word ) . '%';
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$rows = $this->db->get_results(
+			$this->db->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT id, title, status, up_votes FROM {$this->table}
+				 WHERE status != 'rejected'
+				 AND LOWER(title) LIKE %s
+				 ORDER BY up_votes DESC
+				 LIMIT 100",
+				$like
+			)
+		);
+
+		// İlk kelimenin LIKE'ı çok az sonuç getirirse tam tablo taraması yap.
+		if ( empty( $rows ) ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$rows = $this->db->get_results(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT id, title, status, up_votes FROM {$this->table}
+				 WHERE status != 'rejected'
+				 ORDER BY up_votes DESC
+				 LIMIT 200"
+			);
+		}
+
+		if ( ! is_array( $rows ) || empty( $rows ) ) {
+			return array();
+		}
+
+		$threshold_pct      = (float) apply_filters( 'mrrs_similar_threshold_pct', self::SIMILAR_THRESHOLD_PCT );
+		$levenshtein_ratio  = (float) apply_filters( 'mrrs_similar_levenshtein_ratio', self::SIMILAR_LEVENSHTEIN_RATIO );
+		$candidates         = array();
+
+		foreach ( $rows as $row ) {
+			$norm_candidate = $this->normalize_title( (string) ( $row->title ?? '' ) );
+			if ( mb_strlen( $norm_candidate ) < 1 ) {
+				continue;
+			}
+
+			// similar_text() yüzde hesabı.
+			similar_text( $normalized, $norm_candidate, $pct );
+
+			// Levenshtein mesafe kontrolü.
+			$max_len   = max( mb_strlen( $normalized ), mb_strlen( $norm_candidate ) );
+			$lev       = levenshtein( $normalized, $norm_candidate );
+			$lev_limit = (int) ceil( $max_len * $levenshtein_ratio );
+			$lev_match = ( $lev <= $lev_limit );
+
+			if ( $pct >= $threshold_pct || $lev_match ) {
+				$candidates[] = array(
+					'id'         => (int) ( $row->id ?? 0 ),
+					'title'      => (string) ( $row->title ?? '' ),
+					'status'     => (string) ( $row->status ?? 'pending' ),
+					'up_votes'   => (int) ( $row->up_votes ?? 0 ),
+					'similarity' => round( (float) $pct, 1 ),
+				);
+			}
+		}
+
+		// Benzerlik skoruna göre azalan sırala.
+		usort( $candidates, static function ( array $a, array $b ): int {
+			return $b['similarity'] <=> $a['similarity'];
+		} );
+
+		return array_slice( $candidates, 0, max( 1, $limit ) );
+	}
+
+	/**
+	 * Başlığı normalize eder: küçük harf, Türkçe karakter düzeltmesi,
+	 * noktalama temizliği ve yaygın tür eklerini kaldırır.
+	 */
+	public function normalize_title( string $title ): string {
+		// Türkçe büyük/küçük harf dönüşümü.
+		$title = str_replace(
+			array( 'İ', 'I', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç' ),
+			array( 'i', 'ı', 'ğ', 'ü', 'ş', 'ö', 'ç' ),
+			$title
+		);
+		$title = mb_strtolower( $title, 'UTF-8' );
+
+		// Yaygın tür eklerini kaldır (kelime sınırında).
+		$suffixes = array( ' manga', ' manhwa', ' manhua', ' webtoon', ' novel', ' light novel', ' ln', ' web novel' );
+		foreach ( $suffixes as $suffix ) {
+			if ( str_ends_with( $title, $suffix ) ) {
+				$title = mb_substr( $title, 0, mb_strlen( $title ) - mb_strlen( $suffix ) );
+			}
+		}
+
+		// Noktalama ve fazla boşlukları temizle.
+		$title = preg_replace( '/[^\p{L}\p{N}\s]/u', ' ', $title ) ?? $title;
+		$title = preg_replace( '/\s+/', ' ', $title ) ?? $title;
+
+		return trim( $title );
+	}
+
 	/**
 	 * Sorgu sonucundaki user ID'leri toplu cache'e yukler (N+1 DB sorgusu onler).
 	 *
