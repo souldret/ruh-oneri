@@ -79,6 +79,42 @@ final class Settings {
 			'mrrs_general'
 		);
 
+		add_settings_field(
+			'rejected_retention',
+			__( 'Reddedilen Önerileri Sakla', 'manga-ruhu-request-system' ),
+			array( $this, 'field_rejected_retention' ),
+			self::OPTION_GROUP,
+			'mrrs_general'
+		);
+
+		/* ── Öneri Kuralları Banner'ı ── */
+		add_settings_section(
+			'mrrs_rules_banner',
+			__( 'Öneri Kuralları Banner\'ı', 'manga-ruhu-request-system' ),
+			array( $this, 'section_rules_banner_desc' ),
+			self::OPTION_GROUP
+		);
+
+		add_settings_field(
+			'rules_banner_enabled',
+			__( 'Banner\'ı Etkinleştir', 'manga-ruhu-request-system' ),
+			array( $this, 'field_checkbox' ),
+			self::OPTION_GROUP,
+			'mrrs_rules_banner',
+			array(
+				'key'   => 'rules_banner_enabled',
+				'label' => __( 'Öneri formunun üzerinde kural/kriter banner\'ını göster', 'manga-ruhu-request-system' ),
+			)
+		);
+
+		add_settings_field(
+			'rules_banner_text',
+			__( 'Banner Metni', 'manga-ruhu-request-system' ),
+			array( $this, 'field_rules_banner_text' ),
+			self::OPTION_GROUP,
+			'mrrs_rules_banner'
+		);
+
 		/* ── Ana Renkler ── */
 		add_settings_section(
 			'mrrs_main_colors',
@@ -226,6 +262,52 @@ final class Settings {
 		<?php
 	}
 
+	public function field_rejected_retention(): void {
+		$opts    = $this->get();
+		$current = (string) ( $opts['rejected_retention'] ?? 'never_delete' );
+		$name    = self::OPTION_NAME . '[rejected_retention]';
+		$options = array(
+			'never_delete' => __( 'Hiçbir zaman silme (varsayılan)', 'manga-ruhu-request-system' ),
+			'1_hour'       => __( '1 saat sonra sil', 'manga-ruhu-request-system' ),
+			'1_day'        => __( '1 gün sonra sil', 'manga-ruhu-request-system' ),
+			'1_week'       => __( '1 hafta sonra sil', 'manga-ruhu-request-system' ),
+		);
+		?>
+		<select name="<?php echo esc_attr( $name ); ?>" id="mrrs_rejected_retention">
+			<?php foreach ( $options as $value => $label ) : ?>
+				<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $current, $value ); ?>>
+					<?php echo esc_html( $label ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+		<p class="description">
+			<?php esc_html_e( 'Seçilen süre sonunda reddedilen öneriler kalıcı olarak silinir, geri alınamaz.', 'manga-ruhu-request-system' ); ?>
+		</p>
+		<?php
+	}
+
+	public function section_rules_banner_desc(): void {
+		echo '<p>' . esc_html__( 'Öneri listesinin en üstünde gösterilecek kural/kriter banner\'ını yönetin.', 'manga-ruhu-request-system' ) . '</p>';
+	}
+
+	public function field_rules_banner_text(): void {
+		$opts    = $this->get();
+		$current = (string) ( $opts['rules_banner_text'] ?? '' );
+		$name    = self::OPTION_NAME . '[rules_banner_text]';
+		?>
+		<textarea
+			name="<?php echo esc_attr( $name ); ?>"
+			id="mrrs_rules_banner_text"
+			rows="4"
+			class="large-text"
+			placeholder="<?php esc_attr_e( 'Yalnızca manhwa önerileri kabul edilmektedir. Öneriler günlük olarak incelenmektedir.', 'manga-ruhu-request-system' ); ?>"
+		><?php echo esc_textarea( $current ); ?></textarea>
+		<p class="description">
+			<?php esc_html_e( 'İzin verilen HTML etiketleri: <b>, <i>, <a>, <br>, <ul>, <li>, <p>', 'manga-ruhu-request-system' ); ?>
+		</p>
+		<?php
+	}
+
 	public function section_main_colors_desc(): void {
 		echo '<p>' . esc_html__( 'Eklentinin ana renklerini özelleştirin. Boş bırakırsanız varsayılan renkler kullanılır.', 'manga-ruhu-request-system' ) . '</p>';
 	}
@@ -282,10 +364,16 @@ final class Settings {
 		$allowed_per_page = array( 10, 20, 30, 50 );
 		$per_page         = (int) ( $input['per_page'] ?? 20 );
 
+		$allowed_retention = array( 'never_delete', '1_hour', '1_day', '1_week' );
+		$retention         = (string) ( $input['rejected_retention'] ?? 'never_delete' );
+
 		$out = array(
-			'allow_guest_votes'  => ! empty( $input['allow_guest_votes'] ),
-			'allow_guest_submit' => ! empty( $input['allow_guest_submit'] ),
-			'per_page'           => in_array( $per_page, $allowed_per_page, true ) ? $per_page : 20,
+			'allow_guest_votes'   => ! empty( $input['allow_guest_votes'] ),
+			'allow_guest_submit'  => ! empty( $input['allow_guest_submit'] ),
+			'per_page'            => in_array( $per_page, $allowed_per_page, true ) ? $per_page : 20,
+			'rejected_retention'  => in_array( $retention, $allowed_retention, true ) ? $retention : 'never_delete',
+			'rules_banner_enabled' => ! empty( $input['rules_banner_enabled'] ),
+			'rules_banner_text'   => wp_kses_post( (string) ( $input['rules_banner_text'] ?? '' ) ),
 		);
 
 		// Ana renkler
@@ -329,9 +417,12 @@ final class Settings {
 
 	private function defaults(): array {
 		$out = array(
-			'allow_guest_votes'  => true,
-			'allow_guest_submit' => true,
-			'per_page'           => 20,
+			'allow_guest_votes'    => true,
+			'allow_guest_submit'   => true,
+			'per_page'             => 20,
+			'rejected_retention'   => 'never_delete',
+			'rules_banner_enabled' => false,
+			'rules_banner_text'    => '',
 		);
 		foreach ( array( 'color_accent', 'color_accent_light', 'color_text', 'color_text_muted', 'color_card_bg', 'color_border' ) as $key ) {
 			$out[ $key ] = '';

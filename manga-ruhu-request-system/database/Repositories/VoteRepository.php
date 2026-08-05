@@ -120,6 +120,29 @@ final class VoteRepository {
 	}
 
 	/**
+	 * Verilen request_id listesine ait tüm oy kayıtlarını sil.
+	 *
+	 * @param int[] $request_ids Silinecek request ID'leri.
+	 * @return int Silinen satır sayısı.
+	 */
+	public function delete_by_request_ids( array $request_ids ): int {
+		$ids = array_values( array_filter( array_map( 'intval', $request_ids ) ) );
+		if ( empty( $ids ) ) {
+			return 0;
+		}
+		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$result = $this->db->query(
+			$this->db->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+				"DELETE FROM {$this->table} WHERE request_id IN ({$placeholders})",
+				$ids
+			)
+		);
+		return false === $result ? 0 : (int) $result;
+	}
+
+	/**
 	 * Mevcut oyu değiştir (vote_type güncelle).
 	 */
 	public function update_vote_type( int $request_id, string $voter_key, string $vote_type ): bool {

@@ -8,10 +8,20 @@
 
 declare(strict_types=1);
 
+use MangaRuhu\RequestSystem\Admin\Settings;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+
+$mrrs_banner_enabled = Settings::get_option( 'rules_banner_enabled', false );
+$mrrs_banner_text    = (string) Settings::get_option( 'rules_banner_text', '' );
 ?>
+<?php if ( $mrrs_banner_enabled && '' !== trim( wp_strip_all_tags( $mrrs_banner_text ) ) ) : ?>
+<div class="mrrs-rules-banner">
+	<?php echo wp_kses_post( wpautop( $mrrs_banner_text ) ); ?>
+</div>
+<?php endif; ?>
 <div class="mrrs-board" id="mrrs-board" data-mrrs-board>
 
 	<div class="mrrs-board__header">

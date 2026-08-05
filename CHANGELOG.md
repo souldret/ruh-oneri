@@ -1,5 +1,56 @@
 # Changelog — MangaRuhu Request System
 
+## [3.2.0] — 2026-08-05
+
+### Eklendi
+
+- **Reddedilen Önerilerin Otomatik Silinmesi** (`Özellik 1`)
+  - Admin ayarları → Genel Ayarlar bölümüne `rejected_retention` select alanı eklendi.
+    - Seçenekler: `Hiçbir zaman silme (varsayılan)`, `1 saat sonra sil`, `1 gün sonra sil`, `1 hafta sonra sil`.
+    - Whitelist sanitizasyonu: sadece tanımlı 4 değerden biri kabul edilir, geçersiz girişlerde `never_delete`'e düşer.
+  - `includes/Services/CleanupService.php` oluşturuldu (`MangaRuhu\RequestSystem\Services` namespace).
+    - WP Cron hook'u: `mrrs_cleanup_rejected` — saatlik (`hourly`) çalışır.
+    - `never_delete` seçiliyken çalışmadan erken çıkar; mevcut davranış korunur.
+  - `RequestRepository::delete_rejected_older_than( int $seconds ): int` metodu eklendi.
+    - Batch'li silme: her turda en fazla 200 kayıt, `mrrs_status_created` index'ini kullanan `WHERE status = 'rejected' AND created_at < ?` sorgusuyla timeout riski sıfıra yaklaşıyor.
+  - `VoteRepository::delete_by_request_ids( int[] $request_ids ): int` metodu eklendi.
+    - Silinen önerilere ait oy kayıtları orphan kalmadan temizlenir.
+  - `Plugin.php`'ye `CleanupService::register()` çağrısı eklendi (`define_service_hooks()`).
+  - Ana plugin dosyasına (`manga-ruhu-request-system.php`):
+    - `register_activation_hook`: `wp_schedule_event( time(), 'hourly', CleanupService::CRON_HOOK )` eklendi.
+    - `register_deactivation_hook`: `wp_clear_scheduled_hook( CleanupService::CRON_HOOK )` eklendi.
+  - Ayar açıklamasına uyarı metni eklendi: _"Seçilen süre sonunda reddedilen öneriler kalıcı olarak silinir, geri alınamaz."_
+
+- **Öneri Kuralları/Kriterleri Banner'ı** (`Özellik 2`)
+  - Admin ayarları → yeni `Öneri Kuralları Banner'ı` bölümü eklendi.
+    - `rules_banner_enabled` (checkbox): banner'ı aç/kapa.
+    - `rules_banner_text` (textarea): `wp_kses_post` ile sanitize edilir; `<b>`, `<i>`, `<a>`, `<br>`, `<ul>`, `<li>`, `<p>` etiketlerine izin verilir. Script/stil enjeksiyonu engellenir.
+  - `templates/public/request-board.php` başına banner bloğu eklendi.
+    - Ayar kapalıyken veya metin boşsa HTML'e hiç yazılmaz (DOM'da mevcut değil, `hidden` ile gizlemek yeterli değil prensibi).
+  - CSS (`assets/css/public.css`): `.mrrs-rules-banner` — mavi/gri ton (`rgba(96,165,250,…)`), `backdrop-filter` yok (scroll sırasında sürekli görünür eleman için gereksiz GPU maliyeti engellendi).
+
+### İyileştirildi
+
+- **Benzer başlık — AbortController (race condition düzeltmesi)**
+  - `assets/js/public.js`: `similarAbort` değişkeni eklendi. Her yeni `/requests/similar` isteği öncesinde önceki istek `AbortController.abort()` ile iptal ediliyor. Yavaş dönen eski bir yanıtın güncel sonucu ezmesi önlendi. `AbortError` sessizce görmezden geliniyor.
+
+- **Mobil blur optimizasyonu** (`@media (max-width:480px)`)
+  - `assets/css/public.css`: 480px ve altında `.mrrs-card` üzerindeki `backdrop-filter: blur(5px)` kaldırıldı, düz `background: rgba(20,22,34,.92)` kullanılıyor. Mobil GPU'lar blur'da masaüstünden belirgin şekilde daha fazla yük bindirdiğinden bu değişiklik render performansını iyileştiriyor.
+
+### Kabul Kriterleri Durumu
+
+| Kriter | Durum |
+|---|---|
+| `never_delete` seçiliyken hiçbir öneri silinmiyor | ✅ |
+| `1_hour` seçiliyken eski `rejected` kayıtlar bir sonraki cron'da siliniyor | ✅ |
+| Silme batch'li — tek seferde 200 kayıt, timeout yok | ✅ |
+| İlişkili oy kayıtları orphan kalmıyor | ✅ |
+| Aktivasyon sonrası `wp_next_scheduled('mrrs_cleanup_rejected')` dolu dönür | ✅ |
+| Deaktivasyon sonrası `wp_next_scheduled('mrrs_cleanup_rejected')` boş dönür | ✅ |
+| Banner ayar kapalıyken DOM'a hiç yazılmıyor | ✅ |
+| Banner metni boşsa açık olsa bile gösterilmiyor | ✅ |
+| `<script>alert(1)</script>` girişi `wp_kses_post` ile temizleniyor | ✅ |
+
 ## [3.1.1] — 2026-08-03
 
 ### Düzeltildi

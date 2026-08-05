@@ -449,6 +449,7 @@ if(frm){
   var similarTimer=null;
   var lastCheckedTitle='';
   var forceSubmit=false;
+  var similarAbort=null;
 
   if(titleInput){
     titleInput.addEventListener('input',function(){
@@ -462,7 +463,11 @@ if(frm){
       if(val===lastCheckedTitle)return;
       similarTimer=setTimeout(function(){
         lastCheckedTitle=val;
+        // Önceki isteği iptal et (race condition önlemi).
+        if(similarAbort){similarAbort.abort();}
+        similarAbort=new AbortController();
         fetch(apiBase+'/requests/similar?title='+encodeURIComponent(val),{
+          signal:similarAbort.signal,
           headers:{'X-WP-Nonce':nonce}
         })
           .then(function(r){
@@ -474,6 +479,7 @@ if(frm){
             renderSimilarWarning(Array.isArray(data.items)?data.items:[]);
           })
           .catch(function(err){
+            if(err&&err.name==='AbortError'){return;}
             console.warn('[mrrs] similar-check failed:',err);
           });
       },400);

@@ -455,6 +455,56 @@ final class RequestRepository {
 	}
 
 	/**
+	 * Belirtilen süreden daha eski ve status=rejected olan kayıtları batch'li siler.
+	 * İlişkili oy kayıtlarını da temizler.
+	 *
+	 * @param int $seconds Kaç saniye önceki kayıtlar silinsin.
+	 * @return int Silinen kayıt sayısı.
+	 */
+	public function delete_rejected_older_than( int $seconds ): int {
+		$cutoff = gmdate( 'Y-m-d H:i:s', time() - $seconds );
+		$total  = 0;
+		$votes  = new VoteRepository();
+
+		do {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$ids = $this->db->get_col(
+				$this->db->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					"SELECT id FROM {$this->table}
+					 WHERE status = %s AND created_at < %s
+					 LIMIT 200",
+					'rejected',
+					$cutoff
+				)
+			);
+
+			if ( empty( $ids ) ) {
+				break;
+			}
+
+			$ids          = array_map( 'intval', $ids );
+			$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+
+			// İlişkili oy kayıtlarını önce sil.
+			$votes->delete_by_request_ids( $ids );
+
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$this->db->query(
+				$this->db->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+					"DELETE FROM {$this->table} WHERE id IN ({$placeholders})",
+					$ids
+				)
+			);
+
+			$total += count( $ids );
+		} while ( count( $ids ) === 200 );
+
+		return $total;
+	}
+
+	/**
 	 * Sorgu sonucundaki user ID'leri toplu cache'e yukler (N+1 DB sorgusu onler).
 	 *
 	 * @param object[] $items

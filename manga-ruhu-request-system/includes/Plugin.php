@@ -13,6 +13,7 @@ use MangaRuhu\RequestSystem\Admin\Admin;
 use MangaRuhu\RequestSystem\Api\RestApi;
 use MangaRuhu\RequestSystem\Database\Migrator;
 use MangaRuhu\RequestSystem\PublicFront\Frontend;
+use MangaRuhu\RequestSystem\Services\CleanupService;
 
 final class Plugin {
 
@@ -26,6 +27,7 @@ final class Plugin {
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
 		$this->define_api_hooks();
+		$this->define_service_hooks();
 	}
 
 	private function maybe_upgrade_database(): void {
@@ -73,6 +75,10 @@ final class Plugin {
 	private function define_api_hooks(): void {
 		$api = new RestApi( $this->loader );
 		$api->register();
+	}
+
+	private function define_service_hooks(): void {
+		( new CleanupService() )->register( $this->loader );
 	}
 
 	public function run(): void {

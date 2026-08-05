@@ -3,7 +3,7 @@
  * Plugin Name:       MangaRuhu Request System
  * Plugin URI:        https://mangaruhu.com
  * Description:       Seri öneri sistemi — kullanıcılar öneri gönderir, admin onaylar, ziyaretçiler oy verir.
- * Version:           3.1.1
+ * Version:           3.2.0
  * Requires at least: 6.0
  * Requires PHP:      8.2
  * Author:            MangaRuhu
@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MRRS_VERSION',         '3.1.1' );
+define( 'MRRS_VERSION',         '3.2.0' );
 define( 'MRRS_DB_VERSION',      '3.0.0' );
 define( 'MRRS_PLUGIN_FILE',     __FILE__ );
 define( 'MRRS_PLUGIN_DIR',      plugin_dir_path( __FILE__ ) );
@@ -55,12 +55,19 @@ register_activation_hook(
 	static function (): void {
 		require_once MRRS_PLUGIN_DIR . 'includes/Activator.php';
 		Activator::activate();
+
+		// Reddedilen öneri temizlik cron'unu zamanla.
+		if ( ! wp_next_scheduled( \MangaRuhu\RequestSystem\Services\CleanupService::CRON_HOOK ) ) {
+			wp_schedule_event( time(), 'hourly', \MangaRuhu\RequestSystem\Services\CleanupService::CRON_HOOK );
+		}
 	}
 );
 
 register_deactivation_hook(
 	__FILE__,
 	static function (): void {
+		// Temizlik cron'unu kaldır.
+		wp_clear_scheduled_hook( \MangaRuhu\RequestSystem\Services\CleanupService::CRON_HOOK );
 		flush_rewrite_rules();
 	}
 );
