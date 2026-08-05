@@ -115,6 +115,24 @@ final class Settings {
 			'mrrs_rules_banner'
 		);
 
+		add_settings_field(
+			'rules_banner_color',
+			__( 'Duyuru Çubuğu Rengi', 'manga-ruhu-request-system' ),
+			array( $this, 'field_main_color' ),
+			self::OPTION_GROUP,
+			'mrrs_rules_banner',
+			array( 'slug' => 'rules_banner_color' )
+		);
+
+		add_settings_field(
+			'rules_banner_text_color',
+			__( 'Duyuru Çubuğu Yazı Rengi', 'manga-ruhu-request-system' ),
+			array( $this, 'field_main_color' ),
+			self::OPTION_GROUP,
+			'mrrs_rules_banner',
+			array( 'slug' => 'rules_banner_text_color' )
+		);
+
 		/* ── Ana Renkler ── */
 		add_settings_section(
 			'mrrs_main_colors',
@@ -372,8 +390,10 @@ final class Settings {
 			'allow_guest_submit'  => ! empty( $input['allow_guest_submit'] ),
 			'per_page'            => in_array( $per_page, $allowed_per_page, true ) ? $per_page : 20,
 			'rejected_retention'  => in_array( $retention, $allowed_retention, true ) ? $retention : 'never_delete',
-			'rules_banner_enabled' => ! empty( $input['rules_banner_enabled'] ),
-			'rules_banner_text'   => wp_kses_post( (string) ( $input['rules_banner_text'] ?? '' ) ),
+			'rules_banner_enabled'    => ! empty( $input['rules_banner_enabled'] ),
+			'rules_banner_text'       => wp_kses_post( (string) ( $input['rules_banner_text'] ?? '' ) ),
+			'rules_banner_color'      => sanitize_hex_color( (string) ( $input['rules_banner_color'] ?? '' ) ) ?? '',
+			'rules_banner_text_color' => sanitize_hex_color( (string) ( $input['rules_banner_text_color'] ?? '' ) ) ?? '',
 		);
 
 		// Ana renkler
@@ -421,8 +441,10 @@ final class Settings {
 			'allow_guest_submit'   => true,
 			'per_page'             => 20,
 			'rejected_retention'   => 'never_delete',
-			'rules_banner_enabled' => false,
-			'rules_banner_text'    => '',
+			'rules_banner_enabled'    => false,
+			'rules_banner_text'       => '',
+			'rules_banner_color'      => '',
+			'rules_banner_text_color' => '',
 		);
 		foreach ( array( 'color_accent', 'color_accent_light', 'color_text', 'color_text_muted', 'color_card_bg', 'color_border' ) as $key ) {
 			$out[ $key ] = '';
@@ -435,14 +457,30 @@ final class Settings {
 
 	private function default_main_color( string $slug ): string {
 		$defaults = array(
-			'color_accent'       => '#7c3aed',
-			'color_accent_light' => '#a78bfa',
-			'color_text'         => '#e2e8f0',
-			'color_text_muted'   => '#94a3b8',
-			'color_card_bg'      => '#141622',
-			'color_border'       => '#ffffff',
+			'color_accent'            => '#7c3aed',
+			'color_accent_light'      => '#a78bfa',
+			'color_text'              => '#e2e8f0',
+			'color_text_muted'        => '#94a3b8',
+			'color_card_bg'           => '#141622',
+			'color_border'            => '#ffffff',
+			'rules_banner_color'      => '#7c3aed',
+			'rules_banner_text_color' => '',
 		);
 		return $defaults[ $slug ] ?? '#ffffff';
+	}
+
+	/**
+	 * Banner renk ayarlarını döndür.
+	 *
+	 * @return array{rules_banner_color:string, rules_banner_text_color:string}
+	 */
+	public static function get_rules_banner_colors(): array {
+		$opts = get_option( self::OPTION_NAME, array() );
+		$opts = is_array( $opts ) ? $opts : array();
+		return array(
+			'rules_banner_color'      => sanitize_hex_color( (string) ( $opts['rules_banner_color'] ?? '' ) ) ?? '#7c3aed',
+			'rules_banner_text_color' => sanitize_hex_color( (string) ( $opts['rules_banner_text_color'] ?? '' ) ) ?? '',
+		);
 	}
 
 	/**

@@ -455,9 +455,9 @@ mark.mrrs-highlight { background:rgba(250,204,21,.25);color:#fde68a;border-radiu
   margin:0 0 20px;
   padding:14px 16px;
   border-radius:var(--mrrs-radius-lg);
-  background:linear-gradient(135deg, var(--mrrs-accent-dim), rgba(20,22,34,.55));
+  background:var(--mrrs-rules-bg, linear-gradient(135deg, var(--mrrs-accent-dim), rgba(20,22,34,.55)));
   border:1px solid var(--mrrs-border);
-  border-left:3px solid var(--mrrs-accent);
+  border-left:3px solid var(--mrrs-rules-accent, var(--mrrs-accent));
   box-shadow:var(--mrrs-shadow-sm);
   position:relative;
   overflow:hidden;
@@ -473,8 +473,8 @@ mark.mrrs-highlight { background:rgba(250,204,21,.25);color:#fde68a;border-radiu
   display:flex;
   align-items:center;
   justify-content:center;
-  background:var(--mrrs-accent-dim);
-  color:var(--mrrs-accent-light);
+  background:var(--mrrs-rules-icon-bg, var(--mrrs-accent-dim));
+  color:var(--mrrs-rules-accent, var(--mrrs-accent-light));
   /* Düşük frekanslı, hafif nabız — dikkat çeker ama rahatsız etmez */
   animation:mrrs-rules-icon-pulse 2.6s ease-in-out infinite;
 }
@@ -487,13 +487,13 @@ mark.mrrs-highlight { background:rgba(250,204,21,.25);color:#fde68a;border-radiu
   font-weight:700;
   letter-spacing:.02em;
   text-transform:uppercase;
-  color:var(--mrrs-accent-light);
+  color:var(--mrrs-rules-accent, var(--mrrs-accent-light));
 }
 
 .mrrs-rules-banner__text{
   font-size:14px;
   line-height:1.55;
-  color:var(--mrrs-text-muted);
+  color:var(--mrrs-rules-text, var(--mrrs-text-muted));
 }
 .mrrs-rules-banner__text p{ margin:0 0 6px; }
 .mrrs-rules-banner__text p:last-child{ margin-bottom:0; }
@@ -524,7 +524,7 @@ mark.mrrs-highlight { background:rgba(250,204,21,.25);color:#fde68a;border-radiu
 }
 
 @keyframes mrrs-rules-icon-pulse{
-  0%, 100% { box-shadow:0 0 0 0 var(--mrrs-accent-glow); }
+  0%, 100% { box-shadow:0 0 0 0 var(--mrrs-rules-glow, var(--mrrs-accent-glow)); }
   50%      { box-shadow:0 0 0 6px transparent; }
 }
 

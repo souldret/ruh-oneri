@@ -12,28 +12,31 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+<?php
 $mrrs_banner_enabled = \MangaRuhu\RequestSystem\Admin\Settings::get_option( 'rules_banner_enabled', false );
 $mrrs_banner_text    = (string) \MangaRuhu\RequestSystem\Admin\Settings::get_option( 'rules_banner_text', '' );
-if ( $mrrs_banner_enabled && '' !== trim( wp_strip_all_tags( $mrrs_banner_text ) ) ) : ?>
-<div class="mrrs-rules-banner" data-mrrs-rules>
-	<div class="mrrs-rules-banner__icon" aria-hidden="true">
-		<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-			<path d="M3 11l18-5v12L3 13v-2z"></path>
-			<path d="M11.6 16.8a2 2 0 1 1-3.2 2.4"></path>
-		</svg>
-	</div>
-	<div class="mrrs-rules-banner__body">
-		<p class="mrrs-rules-banner__title"><?php esc_html_e( 'Öneri Göndermeden Önce', 'manga-ruhu-request-system' ); ?></p>
-		<div class="mrrs-rules-banner__text">
-			<?php echo wp_kses_post( wpautop( $mrrs_banner_text ) ); ?>
-		</div>
-	</div>
-	<button type="button" class="mrrs-rules-banner__close" data-mrrs-rules-close aria-label="<?php esc_attr_e( 'Kapat', 'manga-ruhu-request-system' ); ?>">
-		<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-	</button>
-</div>
-<?php endif; ?>
+?>
 <div class="mrrs-board" id="mrrs-board" data-mrrs-board>
+
+	<?php if ( $mrrs_banner_enabled && '' !== trim( wp_strip_all_tags( $mrrs_banner_text ) ) ) : ?>
+	<div class="mrrs-rules-banner" data-mrrs-rules>
+		<div class="mrrs-rules-banner__icon" aria-hidden="true">
+			<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<path d="M3 11l18-5v12L3 13v-2z"></path>
+				<path d="M11.6 16.8a2 2 0 1 1-3.2 2.4"></path>
+			</svg>
+		</div>
+		<div class="mrrs-rules-banner__body">
+			<p class="mrrs-rules-banner__title"><?php esc_html_e( 'Öneri Göndermeden Önce', 'manga-ruhu-request-system' ); ?></p>
+			<div class="mrrs-rules-banner__text">
+				<?php echo wp_kses_post( wpautop( $mrrs_banner_text ) ); ?>
+			</div>
+		</div>
+		<button type="button" class="mrrs-rules-banner__close" data-mrrs-rules-close aria-label="<?php esc_attr_e( 'Kapat', 'manga-ruhu-request-system' ); ?>">
+			<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+		</button>
+	</div>
+	<?php endif; ?>
 
 	<div class="mrrs-board__header">
 		<div class="mrrs-board__header-top">

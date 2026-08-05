@@ -98,10 +98,11 @@ final class Frontend {
 			'per_page' => \MangaRuhu\RequestSystem\Admin\Settings::get_per_page(),
 		) );
 
-		// Ana renk ve rozet renk özelleştirme.
-		$main_colors  = \MangaRuhu\RequestSystem\Admin\Settings::get_main_colors();
-		$badge_colors = \MangaRuhu\RequestSystem\Admin\Settings::get_badge_colors();
-		$this->maybe_inline_colors( $main_colors, $badge_colors );
+		// Ana renk, rozet renk ve banner renk özelleştirme.
+		$main_colors   = \MangaRuhu\RequestSystem\Admin\Settings::get_main_colors();
+		$badge_colors  = \MangaRuhu\RequestSystem\Admin\Settings::get_badge_colors();
+		$banner_colors = \MangaRuhu\RequestSystem\Admin\Settings::get_rules_banner_colors();
+		$this->maybe_inline_colors( $main_colors, $badge_colors, $banner_colors );
 	}
 
 	/**
@@ -109,8 +110,9 @@ final class Frontend {
 	 *
 	 * @param array<string,string> $main_colors
 	 * @param array<string,string> $badge_colors
+	 * @param array<string,string> $banner_colors
 	 */
-	private function maybe_inline_colors( array $main_colors, array $badge_colors ): void {
+	private function maybe_inline_colors( array $main_colors, array $badge_colors, array $banner_colors = array() ): void {
 		$lines = array();
 
 		// Ana renk → CSS custom property eşleştirmesi
@@ -168,6 +170,20 @@ final class Frontend {
 			$lines[] = "{$prop_color}:{$hex};";
 			$lines[] = "{$prop_border}:rgba({$rgb},.40);";
 			$lines[] = "{$prop_bg}:rgba({$rgb},.10);";
+		}
+
+		// Banner renkleri
+		$hex_banner = $banner_colors['rules_banner_color'] ?? '';
+		if ( '' !== $hex_banner ) {
+			$rgb     = $this->hex_to_rgb( $hex_banner );
+			$lines[] = "--mrrs-rules-accent:{$hex_banner};";
+			$lines[] = "--mrrs-rules-bg:linear-gradient(135deg, rgba({$rgb},.18), rgba(20,22,34,.55));";
+			$lines[] = "--mrrs-rules-icon-bg:rgba({$rgb},.18);";
+			$lines[] = "--mrrs-rules-glow:rgba({$rgb},.28);";
+		}
+		$hex_text = $banner_colors['rules_banner_text_color'] ?? '';
+		if ( '' !== $hex_text ) {
+			$lines[] = "--mrrs-rules-text:{$hex_text};";
 		}
 
 		if ( ! empty( $lines ) ) {
