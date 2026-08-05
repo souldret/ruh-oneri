@@ -556,4 +556,21 @@ if(frm){
     setTimeout(tryHighlight,900);
   })();
 }
+
+/* ── RULES BANNER — kapat butonu ── */
+(function(){
+  var banner=document.querySelector('[data-mrrs-rules]');
+  var closeBtn=document.querySelector('[data-mrrs-rules-close]');
+  if(!banner||!closeBtn)return;
+
+  if(sessionStorage.getItem('mrrs_rules_dismissed')==='1'){
+    banner.classList.add('is-dismissed');
+    return;
+  }
+
+  closeBtn.addEventListener('click',function(){
+    banner.classList.add('is-dismissed');
+    sessionStorage.setItem('mrrs_rules_dismissed','1');
+  });
+})();
 })();
