@@ -475,11 +475,13 @@ final class Settings {
 	 * @return array{rules_banner_color:string, rules_banner_text_color:string}
 	 */
 	public static function get_rules_banner_colors(): array {
-		$opts = get_option( self::OPTION_NAME, array() );
-		$opts = is_array( $opts ) ? $opts : array();
+		$opts  = get_option( self::OPTION_NAME, array() );
+		$opts  = is_array( $opts ) ? $opts : array();
+		$color = sanitize_hex_color( (string) ( $opts['rules_banner_color'] ?? '' ) );
+		$text  = sanitize_hex_color( (string) ( $opts['rules_banner_text_color'] ?? '' ) );
 		return array(
-			'rules_banner_color'      => sanitize_hex_color( (string) ( $opts['rules_banner_color'] ?? '' ) ) ?? '#7c3aed',
-			'rules_banner_text_color' => sanitize_hex_color( (string) ( $opts['rules_banner_text_color'] ?? '' ) ) ?? '',
+			'rules_banner_color'      => ( null !== $color && '' !== $color ) ? $color : '',
+			'rules_banner_text_color' => ( null !== $text && '' !== $text ) ? $text : '',
 		);
 	}
 

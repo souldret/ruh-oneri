@@ -12,7 +12,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-<?php
 $mrrs_banner_enabled = \MangaRuhu\RequestSystem\Admin\Settings::get_option( 'rules_banner_enabled', false );
 $mrrs_banner_text    = (string) \MangaRuhu\RequestSystem\Admin\Settings::get_option( 'rules_banner_text', '' );
 ?>
