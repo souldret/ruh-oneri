@@ -172,22 +172,26 @@ final class Frontend {
 			$lines[] = "{$prop_bg}:rgba({$rgb},.10);";
 		}
 
-		// Banner renkleri
-		$hex_banner = $banner_colors['rules_banner_color'] ?? '';
+		if ( ! empty( $lines ) ) {
+			wp_add_inline_style( 'mrrs-public', ':root{' . implode( '', $lines ) . '}' );
+		}
+
+		// Banner renkleri — .mrrs-rules-banner scope'unda override (specificity için)
+		$banner_lines = array();
+		$hex_banner   = $banner_colors['rules_banner_color'] ?? '';
 		if ( '' !== $hex_banner ) {
-			$rgb     = $this->hex_to_rgb( $hex_banner );
-			$lines[] = "--mrrs-rules-accent:{$hex_banner};";
-			$lines[] = "--mrrs-rules-bg:linear-gradient(135deg, rgba({$rgb},.18), rgba(20,22,34,.55));";
-			$lines[] = "--mrrs-rules-icon-bg:rgba({$rgb},.18);";
-			$lines[] = "--mrrs-rules-glow:rgba({$rgb},.28);";
+			$rgb            = $this->hex_to_rgb( $hex_banner );
+			$banner_lines[] = "--mrrs-rules-accent:{$hex_banner};";
+			$banner_lines[] = "--mrrs-rules-bg-start:rgba({$rgb},.22);";
+			$banner_lines[] = "--mrrs-rules-border:rgba({$rgb},.30);";
+			$banner_lines[] = "--mrrs-rules-glow:rgba({$rgb},.28);";
 		}
 		$hex_text = $banner_colors['rules_banner_text_color'] ?? '';
 		if ( '' !== $hex_text ) {
-			$lines[] = "--mrrs-rules-text:{$hex_text};";
+			$banner_lines[] = "--mrrs-rules-text:{$hex_text};";
 		}
-
-		if ( ! empty( $lines ) ) {
-			wp_add_inline_style( 'mrrs-public', ':root{' . implode( '', $lines ) . '}' );
+		if ( ! empty( $banner_lines ) ) {
+			wp_add_inline_style( 'mrrs-public', '.mrrs-rules-banner{' . implode( '', $banner_lines ) . '}' );
 		}
 	}
 
