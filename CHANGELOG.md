@@ -1,5 +1,32 @@
 # Changelog — MangaRuhu Request System
 
+## [3.2.3] — 2026-08-05
+
+### Düzeltildi
+
+- **Banner tasarımı geri yüklendi** — CSS custom property'leri (`:root` yerine) `.mrrs-rules-banner{}` element scope'unda tanımlandı; `var()` nested fallback parser sorunu ortadan kalktı, mor gradient arka plan artık her tarayıcıda doğru görünüyor.
+- **Banner renk özelleştirmesi çalışmıyor** — `wp_add_inline_style` ile yazılan inline CSS artık `.mrrs-rules-banner{}` selector'ına yazılıyor (önceden `:root{}` idi); specificity sorunu giderildi, admin panelinden seçilen renk artık border/ikon/başlık rengini doğru override ediyor.
+- **PHP Fatal Error** — `templates/public/request-board.php`'de zaten açık bir `<?php` bloğu içinde fazladan `<?php` açılması "Sitenizde ciddi bir sorun çıktı" hatasına yol açıyordu; fazla açılış tag'i kaldırıldı.
+- **Banner genişlik/ortalama sorunu** — Banner `.mrrs-board` dışında render edildiğinden tema container'ının tam genişliğini alıyordu; `<div class="mrrs-board">` açılış tag'inden hemen sonra, `.mrrs-board__header`'dan önce konumlandırıldı — artık board'un `max-width: 760px` ve `margin: 0 auto` kurallarını miras alıyor.
+
+## [3.2.1] — 2026-08-05
+
+### Eklendi
+
+- **Duyuru Çubuğu Renk Ayarları** — Admin → Öneri Kuralları Banner'ı bölümüne iki renk seçici eklendi:
+  - `rules_banner_color`: border, ikon ve başlık rengi (`sanitize_hex_color` ile doğrulanır, varsayılan `#7c3aed`).
+  - `rules_banner_text_color`: metin rengi (boş bırakılırsa `--mrrs-text-muted` kullanılır).
+  - `Settings::get_rules_banner_colors()` static metodu eklendi.
+  - `Frontend::maybe_inline_colors()` güncellendi: banner renkleri `.mrrs-rules-banner{}` scope'unda inline CSS olarak çıktılanır.
+- **Banner genişlik düzeltmesi** — Banner `.mrrs-board` container'ı içine taşındı; ayrı `max-width`/`margin` CSS'i gereksiz.
+
+### İyileştirildi
+
+- **Banner görsel tasarımı yenilendi** — İkon (SVG), başlık (`Öneri Göndermeden Önce`), kapat butonu (`data-mrrs-rules-close`) eklendi; mor accent gradient arka plan, sol kenar vurgu, giriş animasyonu (`mrrs-rules-in`, `opacity`+`translateY`) ve ikon nabız efekti (`mrrs-rules-icon-pulse`) eklendi. `backdrop-filter` kullanılmadı.
+- **Kapat butonu (sessionStorage)** — `public.js`'e rules banner IIFE eklendi; kapat butonuna basınca `sessionStorage` ile oturum bazlı kapatma sağlandı (yeni ziyarette tekrar görünür).
+- **`prefers-reduced-motion`** — Banner giriş ve ikon animasyonları reduced-motion tercihine saygı gösteriyor.
+- **Mobil (560px)** — Banner padding/gap/font boyutları küçültüldü.
+
 ## [3.2.0] — 2026-08-05
 
 ### Eklendi

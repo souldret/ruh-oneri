@@ -3,7 +3,7 @@
  * Plugin Name:       MangaRuhu Request System
  * Plugin URI:        https://mangaruhu.com
  * Description:       Seri öneri sistemi — kullanıcılar öneri gönderir, admin onaylar, ziyaretçiler oy verir.
- * Version:           3.2.0
+ * Version:           3.2.3
  * Requires at least: 6.0
  * Requires PHP:      8.2
  * Author:            MangaRuhu
@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MRRS_VERSION',         '3.2.0' );
+define( 'MRRS_VERSION',         '3.2.3' );
 define( 'MRRS_DB_VERSION',      '3.0.0' );
 define( 'MRRS_PLUGIN_FILE',     __FILE__ );
 define( 'MRRS_PLUGIN_DIR',      plugin_dir_path( __FILE__ ) );
